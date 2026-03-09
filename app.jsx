@@ -59,14 +59,14 @@ const DYNASTY_DATA = {
 
 const DYNASTY_NAMES = Object.keys(DYNASTY_DATA);
 const TRAITS = [
-  { id: 'strategist', name: 'Brilliant Strategist', desc: '+15% Battle Power' },
-  { id: 'administrator', name: 'Wise Administrator', desc: '+10% Gold/Food Income' },
-  { id: 'diplomat', name: 'Charismatic Diplomat', desc: '-20% Diplomacy Cost' },
-  { id: 'ambitious', name: 'Ambitious', desc: '+5 Prestige/mo, -5 Stability/mo' },
-  { id: 'patron', name: 'Scholarly Patron', desc: '+2 Culture/mo' },
-  { id: 'ruthless', name: 'Ruthless', desc: '+20% Battle Lethality, -10 All Relations' },
-  { id: 'pious', name: 'Pious', desc: '+10 Max Stability' },
-  { id: 'cunning', name: 'Cunning', desc: '+5% Maneuver in Battle' },
+  { id: 'strategist', name: 'Yuddhanipuṇa', desc: 'Skilled in War: +15% Battle Power' },
+  { id: 'administrator', name: 'Rājanīticatura', desc: 'Political Expert: +10% Gold/Food Income' },
+  { id: 'diplomat', name: 'Dūtanipuṇa', desc: 'Diplomatic Expert: -20% Diplomacy Cost' },
+  { id: 'ambitious', name: 'Mahotsāha', desc: 'Great Energy: +5 Prestige/mo, -5 Stability/mo' },
+  { id: 'patron', name: 'Vidyāvinodī', desc: 'Knowledge Patron: +2 Culture/mo' },
+  { id: 'ruthless', name: 'Ugra', desc: 'Fierce: +20% Battle Lethality, -10 All Relations' },
+  { id: 'pious', name: 'Dhārmika', desc: 'Righteous: +10 Max Stability' },
+  { id: 'cunning', name: 'Māyāvin', desc: 'Cunning: +5% Maneuver in Battle' },
 ];
 const EVENTS = [
   {
@@ -395,10 +395,10 @@ function MandalaOfKings() {
 
     const alive = updatedFactions.filter(f => !f.isPlayer && f.territories > 0);
     if (!victoryPrompt) {
-      if (p.territories >= 8) { setVictoryType('military'); setVictoryPrompt(true); return; }
+      if (p.territories >= 12) { setVictoryType('military'); setVictoryPrompt(true); return; }
       if (alive.length === 0) { setVictoryType('conquest'); setVictoryPrompt(true); return; }
-      if (culture >= 100) { setVictoryType('cultural'); setVictoryPrompt(true); return; }
-      if (prestige >= 150) { setVictoryType('prestige'); setVictoryPrompt(true); return; }
+      if (culture >= 200) { setVictoryType('cultural'); setVictoryPrompt(true); return; }
+      if (prestige >= 250) { setVictoryType('prestige'); setVictoryPrompt(true); return; }
     }
     if (p.territories <= 0) { setScreen('ended'); return; }
     if (ny >= 1000) { setScreen('ended'); return; }
@@ -516,10 +516,10 @@ function MandalaOfKings() {
             </S>
             <S title="💰 Resources">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
-                {[['Gold 🟡', 'Treasury. ~+20/territory/month.'], ['Food 🌾', '+15/territory/month. Consumed by manpower.'], ['Manpower 👥', 'Grows with stability. Needed to recruit armies.'], ['Stability 🛡️', '0–100%. Higher = more manpower growth.'], ['Culture 📚', 'Earned via events. Victory at 100.'], ['Prestige ⭐', 'Earned via battles & events. Victory at 150.']].map(([l, d]) => (
+                {[['Gold 🟡', 'Treasury. ~+20/territory/month.'], ['Food 🌾', '+15/territory/month. Consumed by manpower.'], ['Manpower 👥', 'Grows with stability. Needed to recruit armies.'], ['Stability 🛡️', '0–100%. Higher = more manpower growth.'], ['Culture 📚', 'Earned via events. Victory at 200.'], ['Prestige ⭐', 'Earned via battles & events. Victory at 250.']].map(([l, d]) => (
                   <div key={l} style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '0.375rem' }}>
                     <div style={{ fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.25rem' }}>{l}</div>
-                    <div style={{ color: 'rgba(254,243,199,0.8)', fontSize: '0.8rem' }}>{d}</div>
+                    <div style={{ color: 'rgba(254,243,199,0.8)' }}>{d}</div>
                   </div>
                 ))}
               </div>
@@ -542,7 +542,7 @@ function MandalaOfKings() {
             </S>
             <S title="🏆 Victory Conditions">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
-                {[['⚔️ Military', 'Control 8+ territories'], ['👑 Conquest', 'Defeat all rivals'], ['📚 Cultural', 'Reach 100 culture'], ['⭐ Prestige', 'Reach 150 prestige']].map(([t, d]) => (
+                {[['⚔️ Military', 'Control 12+ territories'], ['👑 Conquest', 'Defeat all rivals'], ['📚 Cultural', 'Reach 200 culture'], ['⭐ Prestige', 'Reach 250 prestige']].map(([t, d]) => (
                   <div key={t} style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '0.375rem' }}>
                     <div style={{ fontWeight: 'bold', color: '#fbbf24' }}>{t}</div>
                     <div style={{ color: 'rgba(254,243,199,0.8)' }}>{d}</div>
@@ -655,7 +655,7 @@ function MandalaOfKings() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', color: 'rgba(233,213,255,0.85)' }}>
               <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Actions</div>Develop: 50g → food+man<br />Recruit: 80g+200men → +500mil<br />Diplomacy: 30g → +20 rel<br />War: free (pick target)</div>
               <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Income/Turn</div>Gold: ~20 × territories<br />Food: ~15 × territories<br />Manpower: stability-based</div>
-              <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Victory</div>⚔️ 8+ territories<br />👑 Defeat all rivals<br />📚 100 culture<br />⭐ 150 prestige</div>
+              <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Victory</div>⚔️ 12+ territories<br />👑 Defeat all rivals<br />📚 200 culture<br />⭐ 250 prestige</div>
             </div>
             <button onClick={() => { setSavedState({ month, year, factions, player, culture, prestige, log }); setScreen('howtoplay'); }}
               style={{ marginTop: '0.5rem', color: '#c4b5fd', fontSize: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
@@ -681,7 +681,7 @@ function MandalaOfKings() {
           ))}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-          {[{ label: 'Culture 📚', val: culture, max: 100, col: '#818cf8' }, { label: 'Prestige ⭐', val: prestige, max: 150, col: '#fbbf24' }].map(r => (
+          {[{ label: 'Culture 📚', val: culture, max: 200, col: '#818cf8' }, { label: 'Prestige ⭐', val: prestige, max: 250, col: '#fbbf24' }].map(r => (
             <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                 <span style={{ fontSize: '0.75rem', color: r.col }}>{r.label}</span>
