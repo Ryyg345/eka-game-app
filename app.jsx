@@ -178,6 +178,27 @@ function MandalaOfKings() {
   const [player, setPlayer] = useState(null);
   const [culture, setCulture] = useState(10);
   const [prestige, setPrestige] = useState(20);
+
+  // --- Auto-Save System ---
+  React.useEffect(() => {
+    if (screen === 'playing' && player) {
+      const gameState = { month, year, factions, player, culture, prestige, log };
+      localStorage.setItem('mandala_save', JSON.stringify(gameState));
+    }
+  }, [month, year, factions, player, culture, prestige, screen]);
+
+  const loadSave = () => {
+    const saved = localStorage.getItem('mandala_save');
+    if (saved) {
+      const s = JSON.parse(saved);
+      setMonth(s.month); setYear(s.year);
+      setFactions(s.factions); setPlayer(s.player);
+      setCulture(s.culture); setPrestige(s.prestige);
+      setLog(s.log); setScreen('playing');
+    }
+  };
+
+  const clearSave = () => localStorage.removeItem('mandala_save');
   const [event, setEvent] = useState(null);
   const [log, setLog] = useState([]);
   const [action, setAction] = useState(null);
@@ -225,6 +246,7 @@ function MandalaOfKings() {
     setVictoryPrompt(false);
     setVictoryType(null);
     setSavedState(null);
+    clearSave();
     setScreen('playing');
   };
 
@@ -396,6 +418,11 @@ function MandalaOfKings() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {localStorage.getItem('mandala_save') && (
+            <button onClick={loadSave} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#059669,#10b981)', color: 'white', border: '2px solid #34d399', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
+              Continue Reign
+            </button>
+          )}
           <button onClick={() => startGame()} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: '2px solid #fbbf24', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
             Quick Play
           </button>
@@ -838,7 +865,7 @@ function MandalaOfKings() {
                 Cancel
               </button>
               <button
-                onClick={() => { setScreen('menu'); setShowExitConfirm(false); }}
+                onClick={() => { setScreen('menu'); setShowExitConfirm(false); clearSave(); }}
                 style={{ flex: 1, padding: '0.75rem', background: '#ef4444', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
               >
                 Yes, Exit
