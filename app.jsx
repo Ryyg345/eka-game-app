@@ -748,7 +748,7 @@ function MandalaOfKings() {
     const handleMouseUp = () => setIsDragging(false);
 
     return (
-      <div 
+      <div
         style={{ position: 'relative', width: '100%', paddingBottom: '120%', background: 'rgba(0,0,0,0.3)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.3)', overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
@@ -762,11 +762,12 @@ function MandalaOfKings() {
           <button onClick={(e) => { e.stopPropagation(); setZoom(1); setOffset({ x: 0, y: 0 }); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontSize: '10px', cursor: 'pointer' }}>Reset</button>
         </div>
         <svg viewBox="0 0 850 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+          <image href="historical_map.png" x="0" y="0" width="850" height="1000" opacity="0.6" preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: 'none' }} />
           <g transform={`translate(${offset.x}, ${offset.y}) scale(${zoom})`}>
             {REGIONS.map(reg => reg.neighbors.map(nb => {
               const other = REGIONS.find(r => r.id === nb);
               if (!other) return null;
-              return <line key={`${reg.id}-${nb}`} x1={reg.x} y1={reg.y} x2={other.x} y2={other.y} stroke="rgba(217,119,6,0.08)" strokeWidth={1/zoom} />;
+              return <line key={`${reg.id}-${nb}`} x1={reg.x} y1={reg.y} x2={other.x} y2={other.y} stroke="rgba(217,119,6,0.08)" strokeWidth={1 / zoom} />;
             }))}
             {REGIONS.map(reg => {
               const owner = factions.find(f => f.regionIds.includes(reg.id));
@@ -774,8 +775,8 @@ function MandalaOfKings() {
               const isPlayer = owner?.isPlayer;
               return (
                 <g key={reg.id}>
-                  <circle cx={reg.x} cy={reg.y} r={(isPlayer ? 10 : 8) / zoom} fill={color} stroke={isPlayer ? '#fff' : 'none'} strokeWidth={2/zoom} />
-                  <text x={reg.x} y={reg.y + 18/zoom} textAnchor="middle" fill="#fef3c7" fontSize={10/zoom} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{reg.name}</text>
+                  <circle cx={reg.x} cy={reg.y} r={(isPlayer ? 10 : 8) / zoom} fill={color} stroke={isPlayer ? '#fff' : 'none'} strokeWidth={2 / zoom} />
+                  <text x={reg.x} y={reg.y + 18 / zoom} textAnchor="middle" fill="#fef3c7" fontSize={10 / zoom} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{reg.name}</text>
                 </g>
               );
             })}
