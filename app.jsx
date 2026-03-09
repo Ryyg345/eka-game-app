@@ -185,15 +185,40 @@ function MandalaOfKings() {
 
   const addLog = (msg) => setLog(p => [msg, ...p].slice(0, 10));
 
-  const startGame = () => {
+  const startGame = (playerDynastyIndex = null) => {
     const n = rnd(6, 10);
-    const fs = Array.from({ length: n }, (_, i) => makeFaction(i, i === 0));
+    // Shuffle all available dynasty indices
+    let allIndices = Array.from({ length: DYNASTY_NAMES.length }, (_, i) => i);
+    for (let i = allIndices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
+    }
+
+    // If a dynasty was selected, ensure it's at the start and included
+    let selectedIndices;
+    if (playerDynastyIndex !== null) {
+      const filtered = allIndices.filter(i => i !== playerDynastyIndex);
+      selectedIndices = [playerDynastyIndex, ...filtered.slice(0, n - 1)];
+    } else {
+      selectedIndices = allIndices.slice(0, n);
+    }
+
+    const fs = selectedIndices.map((dIdx, i) => makeFaction(dIdx, i === 0));
     fs.forEach(f => fs.forEach(o => { if (f.id !== o.id) f.relations[o.id] = rnd(-50, 50); }));
-    setFactions(fs); setPlayer(fs[0]);
-    setMonth(1); setYear(600); setCulture(10); setPrestige(20);
+
+    setFactions(fs);
+    setPlayer(fs[0]);
+    setMonth(1);
+    setYear(600);
+    setCulture(10);
+    setPrestige(20);
     setLog(['Your reign begins. May the gods favor your dynasty.']);
-    setEvent(null); setAction(null); setTargetId(null);
-    setVictoryPrompt(false); setVictoryType(null); setSavedState(null);
+    setEvent(null);
+    setAction(null);
+    setTargetId(null);
+    setVictoryPrompt(false);
+    setVictoryType(null);
+    setSavedState(null);
     setScreen('playing');
   };
 
@@ -334,12 +359,62 @@ function MandalaOfKings() {
             ))}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-          <button onClick={startGame} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: '2px solid #fbbf24', borderRadius: '0.5rem', cursor: 'pointer' }}>
-            Begin Your Reign
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => startGame()} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: '2px solid #fbbf24', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
+            Quick Play
+          </button>
+          <button onClick={() => setScreen('selection')} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#7c3aed,#9333ea)', color: 'white', border: '2px solid #c084fc', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
+            Choose Your Dynasty
           </button>
           <button onClick={() => setScreen('howtoplay')} style={{ padding: '0.875rem 1.5rem', fontWeight: 'bold', background: 'rgba(0,0,0,0.4)', color: '#fbbf24', border: '2px solid rgba(217,119,6,0.5)', borderRadius: '0.5rem', cursor: 'pointer' }}>
             How to Play
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ─── SELECTION ────────────────────────────────────────────────────── */
+  if (screen === 'selection') return (
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e1b4b,#312e81,#1e1b4b)', padding: '2rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '64rem', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', textAlign: 'center', marginBottom: '0.5rem' }}>Select Your Dynasty</h1>
+        <p style={{ textAlign: 'center', color: '#fbbf24', marginBottom: '2.5rem' }}>Forge your path in Bhāratavarṣa</p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+          {DYNASTY_NAMES.map((name, idx) => {
+            const data = DYNASTY_DATA[name];
+            return (
+              <div key={name}
+                onClick={() => startGame(idx)}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '2px solid rgba(217,119,6,0.3)',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  hover: { transform: 'translateY(-4px)', borderColor: '#fbbf24' }
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#fbbf24'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.3)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              >
+                <h3 style={{ fontSize: '1.5rem', color: '#fbbf24', marginBottom: '0.75rem', fontFamily: 'Georgia,serif' }}>{name}</h3>
+                <div style={{ fontSize: '0.85rem', color: 'rgba(254,243,199,0.7)', marginBottom: '1rem' }}>
+                  Notable Rulers: {data.male.slice(0, 3).join(', ')}...
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
+                  <span style={{ background: 'rgba(217,119,6,0.2)', color: '#fbbf24', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>Historical</span>
+                  <span style={{ background: 'rgba(124,58,237,0.2)', color: '#c084fc', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>Major Power</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <button onClick={() => setScreen('menu')} style={{ background: 'none', border: 'none', color: '#fbbf24', textDecoration: 'underline', cursor: 'pointer' }}>
+            Back to Main Menu
           </button>
         </div>
       </div>
