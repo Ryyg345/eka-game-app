@@ -149,6 +149,34 @@ const rndName = (dynasty) => {
   return pick(data[gender]);
 };
 
+const REGIONS = [
+  { id: 'gandhara', name: 'Gāndhāra', x: 80, y: 100, neighbors: ['kashmir', 'punjab', 'sindh'] },
+  { id: 'kashmir', name: 'Kaśmīra', x: 150, y: 70, neighbors: ['gandhara', 'punjab', 'tibet'] },
+  { id: 'punjab', name: 'Pañcanada', x: 180, y: 150, neighbors: ['gandhara', 'kashmir', 'kanyakubja', 'gurjara', 'sindh'] },
+  { id: 'sindh', name: 'Sindhu', x: 80, y: 220, neighbors: ['gandhara', 'punjab', 'gurjara'] },
+  { id: 'gurjara', name: 'Gūrjara', x: 180, y: 280, neighbors: ['sindh', 'punjab', 'kanyakubja', 'malava', 'maharashtra'] },
+  { id: 'kanyakubja', name: 'Kanyakubja', x: 300, y: 180, neighbors: ['punjab', 'gurjara', 'malava', 'nepal', 'magadha'] },
+  { id: 'nepal', name: 'Nepāla', x: 380, y: 140, neighbors: ['kanyakubja', 'tibet', 'magadha'] },
+  { id: 'tibet', name: 'Trivistapa', x: 450, y: 80, neighbors: ['kashmir', 'nepal', 'magadha', 'kamarupa'] },
+  { id: 'magadha', name: 'Magadha', x: 450, y: 200, neighbors: ['kanyakubja', 'nepal', 'gauda', 'tibet', 'kalinga'] },
+  { id: 'gauda', name: 'Gauḍa', x: 550, y: 220, neighbors: ['magadha', 'kamarupa', 'kalinga'] },
+  { id: 'kamarupa', name: 'Kāmarūpa', x: 620, y: 180, neighbors: ['gauda', 'tibet'] },
+  { id: 'malava', name: 'Mālava', x: 280, y: 320, neighbors: ['gurjara', 'kanyakubja', 'maharashtra', 'kalinga'] },
+  { id: 'kalinga', name: 'Kaliṅga', x: 420, y: 350, neighbors: ['magadha', 'gauda', 'malava', 'andhra'] },
+  { id: 'maharashtra', name: 'Mahārāṣṭra', x: 250, y: 450, neighbors: ['gurjara', 'malava', 'karnataka', 'andhra'] },
+  { id: 'andhra', name: 'Āndhra', x: 380, y: 480, neighbors: ['maharashtra', 'kalinga', 'karnataka', 'cholamandala'] },
+  { id: 'karnataka', name: 'Karṇāṭaka', x: 250, y: 560, neighbors: ['maharashtra', 'andhra', 'cholamandala', 'chera'] },
+  { id: 'cholamandala', name: 'Coḷamaṇḍala', x: 350, y: 620, neighbors: ['andhra', 'karnataka', 'chera', 'lanka'] },
+  { id: 'chera', name: 'Cera', x: 270, y: 680, neighbors: ['karnataka', 'cholamandala'] },
+  { id: 'lanka', name: 'Laṅkā', x: 380, y: 730, neighbors: ['cholamandala'] },
+];
+
+const DYNASTY_REGIONS = {
+  'Chalukya': 'karnataka', 'Pallava': 'andhra', 'Rashtrakuta': 'maharashtra', 'Pratihara': 'gurjara',
+  'Pala': 'gauda', 'Chola': 'cholamandala', 'Pandya': 'cholamandala', 'Chera': 'chera',
+  'Kashmir': 'kashmir', 'Chandela': 'malava', 'Paramara': 'malava'
+};
+
 const makeChar = (dynasty, isSelf) => ({
   name: rndName(dynasty),
   traits: isSelf ? [pick(TRAITS), pick(TRAITS)] : [pick(TRAITS)],
@@ -156,14 +184,12 @@ const makeChar = (dynasty, isSelf) => ({
 
 const makeFaction = (index, isPlayer = false) => {
   const dName = DYNASTY_NAMES[index];
-  const t = isPlayer ? 3 : rnd(1, 4);
   return {
     id: index, name: dName,
     ruler: makeChar(dName, isPlayer),
     gold: rnd(100, 300), food: rnd(150, 400),
-    territories: t, manpower: t * rnd(500, 1000), stability: rnd(40, 80),
-    isPlayer, militaryStrength: t * rnd(800, 1200),
-    relations: {}, atWar: [],
+    regionIds: [], manpower: 1000, stability: rnd(40, 80),
+    militaryStrength: 2000, relations: {}, atWar: [], isPlayer
   };
 };
 
@@ -235,6 +261,36 @@ function MandalaOfKings() {
     }
 
     const fs = selectedIndices.map((dIdx, i) => makeFaction(dIdx, i === 0));
+
+    // Assign Regions
+    const factionMap = {};
+    fs.forEach(f => { factionMap[f.name] = f; f.regionIds = []; });
+
+    // Step 1: Give everyone their home region
+    fs.forEach(f => {
+      const home = DYNASTY_REGIONS[f.name] || REGIONS[rnd(0, REGIONS.length - 1)].id;
+      if (!fs.some(other => other.regionIds.includes(home))) {
+        f.regionIds.push(home);
+      }
+    });
+
+    // Step 2: Fill remaining regions
+    REGIONS.forEach(reg => {
+      if (!fs.some(f => f.regionIds.includes(reg.id))) {
+        const potential = fs.filter(f => f.regionIds.some(rid => REGIONS.find(r => r.id === rid).neighbors.includes(reg.id)));
+        const target = potential.length ? pick(potential) : pick(fs);
+        target.regionIds.push(reg.id);
+      }
+    });
+
+    // Normalize stats based on regions
+    fs.forEach(f => {
+      const t = f.regionIds.length;
+      f.manpower = t * rnd(500, 1000);
+      f.militaryStrength = t * rnd(1000, 2000);
+      f.territories = t; // derived but kept for some legacy UI if needed
+    });
+
     fs.forEach(f => fs.forEach(o => { if (f.id !== o.id) f.relations[o.id] = rnd(-50, 50); }));
 
     setFactions(fs);
@@ -305,6 +361,14 @@ function MandalaOfKings() {
     if (action === 'war') {
       const tgt = fs.find(f => f.id === targetId);
       if (!tgt || p.atWar.includes(tgt.id)) { addLog('⚠️ Pick a valid target'); return; }
+
+      const isNeighbor = p.regionIds.some(rid => {
+        const reg = REGIONS.find(r => r.id === rid);
+        return reg.neighbors.some(nb => tgt.regionIds.includes(nb));
+      });
+
+      if (!isNeighbor) { addLog('⚠️ Choose a neighbor to declare war!'); return; }
+
       p.atWar = [...p.atWar, tgt.id]; tgt.atWar = [...tgt.atWar, p.id];
       addLog(`⚔️ War declared on ${tgt.name}!`);
     }
@@ -335,13 +399,13 @@ function MandalaOfKings() {
 
     const p = { ...player };
     const hasTrait = (tid) => p.ruler.traits.some(t => t.id === tid);
-    let goldIncome = p.territories * 20 + rnd(-10, 20);
-    let foodIncome = p.territories * 15 + rnd(-5, 15);
-    let manpowerGrowth = Math.floor(p.territories * 5 * (p.stability / 100));
+    let goldIncome = p.regionIds.length * 20 + rnd(-10, 20);
+    let foodIncome = p.regionIds.length * 15 + rnd(-5, 15);
+    let manpowerGrowth = Math.floor(p.regionIds.length * 5 * (p.stability / 100));
 
     if (hasTrait('administrator')) { goldIncome = Math.floor(goldIncome * 1.1); foodIncome = Math.floor(foodIncome * 1.1); }
-    if (hasTrait('ambitious')) { setPrestige(v => v + 5); p.stability = Math.max(0, p.stability - 5); localAddLog('⭐ Ambitious: +5 Prestige, -5 Stability'); }
-    if (hasTrait('patron')) { setCulture(v => v + 2); localAddLog('📜 Patron: +2 Culture'); }
+    if (hasTrait('ambitious')) { setPrestige(v => v + 5); p.stability = Math.max(0, p.stability - 5); localAddLog('⭐ Mahotsāha: +5 Prestige, -5 Stability'); }
+    if (hasTrait('patron')) { setCulture(v => v + 2); localAddLog('📜 Vidyāvinodī: +2 Culture'); }
     if (hasTrait('pious')) p.stability = Math.min(100, p.stability + 2);
 
     p.gold += goldIncome;
@@ -361,21 +425,36 @@ function MandalaOfKings() {
       const pp = p.militaryStrength * pMod;
       const ep = f.militaryStrength * (1 + Math.random() * 0.5);
       const enemy = { ...f };
+
       if (pp > ep * 1.3) {
-        const gain = rnd(1, Math.min(2, enemy.territories));
-        p.territories += gain; enemy.territories -= gain;
-        p.militaryStrength -= rnd(100, 300);
-        enemy.militaryStrength -= rnd(200, 500);
-        setPrestige(v => v + 15);
-        localAddLog(`⚔️ Victory vs ${enemy.name}! +${gain} territories`);
-        if (enemy.territories <= 0) { p.atWar = p.atWar.filter(id => id !== enemy.id); localAddLog(`🏆 ${enemy.name} has fallen!`); }
+        // Find border regions
+        const targetRegions = enemy.regionIds.filter(erid =>
+          REGIONS.find(r => r.id === erid).neighbors.some(nb => p.regionIds.includes(nb))
+        );
+
+        if (targetRegions.length) {
+          const gain = pick(targetRegions);
+          p.regionIds.push(gain);
+          enemy.regionIds = enemy.regionIds.filter(rid => rid !== gain);
+          p.militaryStrength -= rnd(100, 300);
+          enemy.militaryStrength -= rnd(200, 500);
+          setPrestige(v => v + 15);
+          localAddLog(`⚔️ Victory vs ${enemy.name}! Captured ${REGIONS.find(r => r.id === gain).name}`);
+          if (enemy.regionIds.length === 0) { p.atWar = p.atWar.filter(id => id !== enemy.id); localAddLog(`🏆 ${enemy.name} has fallen!`); }
+        }
       } else if (ep > pp * 1.3) {
-        const lose = rnd(1, Math.min(2, p.territories));
-        p.territories -= lose; enemy.territories += lose;
-        p.militaryStrength -= rnd(200, 500);
-        enemy.militaryStrength -= rnd(100, 300);
-        setPrestige(v => Math.max(0, v - 10));
-        localAddLog(`💔 Defeat vs ${enemy.name}! -${lose} territories`);
+        const targetRegions = p.regionIds.filter(prid =>
+          REGIONS.find(r => r.id === prid).neighbors.some(nb => enemy.regionIds.includes(nb))
+        );
+        if (targetRegions.length) {
+          const lose = pick(targetRegions);
+          enemy.regionIds.push(lose);
+          p.regionIds = p.regionIds.filter(rid => rid !== lose);
+          p.militaryStrength -= rnd(200, 500);
+          enemy.militaryStrength -= rnd(100, 300);
+          setPrestige(v => Math.max(0, v - 10));
+          localAddLog(`💔 Defeat vs ${enemy.name}! Lost ${REGIONS.find(r => r.id === lose).name}`);
+        }
       } else {
         p.militaryStrength -= rnd(50, 150);
         enemy.militaryStrength -= rnd(50, 150);
@@ -386,6 +465,10 @@ function MandalaOfKings() {
 
     setFactions(updatedFactions); setPlayer(p);
 
+    // Re-sync basic territory count
+    p.territories = p.regionIds.length;
+    updatedFactions.forEach(f => f.territories = f.regionIds.length);
+
     const summary = [
       `💰 Economy: +${goldIncome} Gold, +${foodIncome} Food`,
       `👥 Growth: +${manpowerGrowth} Manpower`,
@@ -393,13 +476,13 @@ function MandalaOfKings() {
     ];
     setTurnSummary(summary);
 
-    const alive = updatedFactions.filter(f => !f.isPlayer && f.territories > 0);
+    const alive = updatedFactions.filter(f => !f.isPlayer && f.regionIds.length > 0);
     if (!victoryPrompt) {
       if (alive.length === 0) { setVictoryType('conquest'); setVictoryPrompt(true); return; }
       if (culture >= 2000) { setVictoryType('cultural'); setVictoryPrompt(true); return; }
       if (prestige >= 2500) { setVictoryType('prestige'); setVictoryPrompt(true); return; }
     }
-    if (p.territories <= 0) { setScreen('ended'); return; }
+    if (p.regionIds.length <= 0) { setScreen('ended'); return; }
     if (ny >= 1000) { setScreen('ended'); return; }
     if (Math.random() < 0.7) setEvent(pick(EVENTS));
   };
@@ -608,7 +691,35 @@ function MandalaOfKings() {
   }
 
   /* ─── MAIN GAME ─────────────────────────────────────────────────────── */
-  const others = factions.filter(f => !f.isPlayer && f.territories > 0);
+  const MandalaMap = ({ factions, player }) => {
+    const FACTION_COLORS = ['#fbbf24', '#f87171', '#60a5fa', '#4ade80', '#a78bfa', '#fb923c', '#2dd4bf', '#e879f9', '#94a3b8', '#facc15'];
+    return (
+      <div style={{ position: 'relative', width: '100%', paddingBottom: '110%', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.2)', overflow: 'hidden' }}>
+        <svg viewBox="0 0 700 800" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+          {/* Historical Borders & Connections */}
+          {REGIONS.map(reg => reg.neighbors.map(nb => {
+            const other = REGIONS.find(r => r.id === nb);
+            return <line key={`${reg.id}-${nb}`} x1={reg.x} y1={reg.y} x2={other.x} y2={other.y} stroke="rgba(217,119,6,0.1)" strokeWidth="1" />;
+          }))}
+
+          {/* Regions */}
+          {REGIONS.map(reg => {
+            const owner = factions.find(f => f.regionIds.includes(reg.id));
+            const color = owner ? FACTION_COLORS[owner.id % FACTION_COLORS.length] : '#334155';
+            const isPlayer = owner?.isPlayer;
+            return (
+              <g key={reg.id} style={{ cursor: 'pointer' }}>
+                <circle cx={reg.x} cy={reg.y} r={isPlayer ? 10 : 8} fill={color} stroke={isPlayer ? '#fff' : 'none'} strokeWidth="2" style={{ transition: 'all 0.3s' }} />
+                <text x={reg.x} y={reg.y + 18} textAnchor="middle" fill="#fef3c7" fontSize="10" style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{reg.name}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  };
+
+  const others = factions.filter(f => !f.isPlayer && f.regionIds.length > 0);
   const score = calcLegacy(player, culture, prestige, year - 600);
   const bg = 'linear-gradient(135deg,#451a03,#450a0a,#3b0764)';
   const card = { background: 'rgba(0,0,0,0.45)', border: '2px solid rgba(217,119,6,0.4)', borderRadius: '0.75rem', padding: '1rem' };
@@ -625,7 +736,7 @@ function MandalaOfKings() {
               <div style={{ display: 'flex', gap: '1rem', color: '#fbbf24', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                 <span>👑 {player?.ruler.name}</span>
                 <span>📅 {month}/{year} CE</span>
-                <span>🏛️ {player?.territories} territories</span>
+                <span>🏛️ {player?.regionIds.length} regions</span>
               </div>
             </div>
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -663,34 +774,102 @@ function MandalaOfKings() {
           </div>
         )}
 
-        {/* Resource bars */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          {[
-            { label: 'Gold', val: Math.floor(player?.gold || 0), col: '#fbbf24', sub: `+${(player?.territories || 0) * 20}/mo` },
-            { label: 'Food', val: Math.floor(player?.food || 0), col: '#4ade80', sub: `+${(player?.territories || 0) * 15}/mo` },
-            { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', sub: '' },
-            { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', sub: '' },
-            { label: 'Stability', val: `${player?.stability || 0}%`, col: '#a78bfa', sub: '' },
-          ].map(r => (
-            <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
-              <div style={{ fontSize: '0.7rem', color: r.col, marginBottom: '0.25rem' }}>{r.label}</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{r.val}</div>
-              {r.sub && <div style={{ fontSize: '0.65rem', color: `${r.col}99` }}>{r.sub}</div>}
+        {/* Resource bars & Map */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              {[
+                { label: 'Gold', val: Math.floor(player?.gold || 0), col: '#fbbf24', sub: `+${(player?.regionIds.length || 0) * 20}/mo` },
+                { label: 'Food', val: Math.floor(player?.food || 0), col: '#4ade80', sub: `+${(player?.regionIds.length || 0) * 15}/mo` },
+                { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', sub: '' },
+              ].map(r => (
+                <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: r.col, marginBottom: '0.25rem' }}>{r.label}</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{r.val}</div>
+                  {r.sub && <div style={{ fontSize: '0.65rem', color: `${r.col}99` }}>{r.sub}</div>}
+                </div>
+              ))}
             </div>
-          ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              {[
+                { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', sub: '' },
+                { label: 'Stability', val: `${player?.stability || 0}%`, col: '#a78bfa', sub: '' },
+              ].map(r => (
+                <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: r.col, marginBottom: '0.25rem' }}>{r.label}</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{r.val}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+              {[{ label: 'Culture 📚', val: culture, max: 2000, col: '#818cf8' }, { label: 'Prestige ⭐', val: prestige, max: 2500, col: '#fbbf24' }].map(r => (
+                <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: r.col }}>{r.label}</span>
+                    <span style={{ fontSize: '0.75rem', color: `${r.col}99` }}>{r.val}/{r.max}</span>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.5)', height: '6px', borderRadius: '9999px' }}>
+                    <div style={{ background: r.col, height: '100%', borderRadius: '9999px', width: `${Math.min(100, (r.val / r.max) * 100)}%`, transition: 'width 0.3s' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ ...card, flex: 1 }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Royal Actions</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+                {['develop', 'recruit', 'diplomacy', 'war', 'peace'].map(a => (
+                  <button key={a} onClick={() => setAction(a)} style={{ padding: '0.5rem', background: action === a ? '#fbbf24' : 'rgba(0,0,0,0.3)', color: action === a ? '#000' : '#fbbf24', border: '1px solid #fbbf24', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center', textTransform: 'capitalize' }}>
+                    {a}
+                  </button>
+                ))}
+              </div>
+
+              {action && (
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid rgba(217,119,6,0.3)' }}>
+                  <div style={{ fontSize: '0.8rem', marginBottom: '0.75rem', color: '#fbbf24' }}>
+                    {action === 'develop' && '🛠️ Develop: -50 gold for resources and manpower.'}
+                    {action === 'recruit' && '⚔️ Recruit: -80 gold, -200 manpower for +500 strength.'}
+                    {(action === 'diplomacy' || action === 'war' || action === 'peace') && (
+                      <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1f2937', color: 'white', border: '1px solid #374151', borderRadius: '0.25rem', padding: '0.25rem', fontSize: '0.75rem' }}>
+                        <option value="">Select Target Dynasty</option>
+                        {others.map(f => <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0})</option>)}
+                      </select>
+                    )}
+                  </div>
+                  <button onClick={executeAction} style={{ width: '100%', padding: '0.5rem', background: '#fbbf24', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.75rem' }}>Execute Action</button>
+                </div>
+              )}
+            </div>
+          </div>
+          <MandalaMap factions={factions} player={player} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-          {[{ label: 'Culture 📚', val: culture, max: 2000, col: '#818cf8' }, { label: 'Prestige ⭐', val: prestige, max: 2500, col: '#fbbf24' }].map(r => (
-            <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                <span style={{ fontSize: '0.75rem', color: r.col }}>{r.label}</span>
-                <span style={{ fontSize: '0.75rem', color: `${r.col}99` }}>{r.val}/{r.max}</span>
-              </div>
-              <div style={{ background: 'rgba(0,0,0,0.5)', height: '6px', borderRadius: '9999px' }}>
-                <div style={{ background: r.col, height: '100%', borderRadius: '9999px', width: `${Math.min(100, (r.val / r.max) * 100)}%`, transition: 'width 0.3s' }} />
-              </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem', marginBottom: '1rem' }}>
+          {/* Chronicles */}
+          <div style={card}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>📜 Chronicles</h2>
+            <div style={{ maxHeight: '10rem', overflowY: 'auto' }}>
+              {log.map((l, i) => (
+                <div key={i} style={{ fontSize: '0.75rem', color: i === 0 ? '#fbbf24' : 'rgba(254,243,199,0.7)', marginBottom: '0.4rem', borderLeft: i === 0 ? '2px solid #fbbf24' : 'none', paddingLeft: i === 0 ? '0.5rem' : '0' }}>{l}</div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Rivals */}
+          <div style={card}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>Rival Mandalas</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              {others.map(f => (
+                <div key={f.id} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid rgba(217,119,6,0.1)' }}>
+                  <span>{f.name} ({f.regionIds.length} reg)</span>
+                  <span style={{ color: (player?.relations[f.id] || 0) > 0 ? '#4ade80' : (player?.relations[f.id] || 0) < 0 ? '#f87171' : '#94a3b8' }}>
+                    {player?.atWar.includes(f.id) ? '⚔️ War' : `Rel: ${player?.relations[f.id] || 0}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Event */}
@@ -708,91 +887,6 @@ function MandalaOfKings() {
           </div>
         )}
 
-        {/* Actions + Diplomacy */}
-        {!event && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.75rem' }}>Royal Actions</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {[
-                  { id: 'develop', label: 'Develop Realm', sub: '-50g → +food, +manpower', col: '#4ade80' },
-                  { id: 'recruit', label: 'Recruit Army', sub: '-80g -200men → +500 mil', col: '#f87171' },
-                  { id: 'diplomacy', label: 'Improve Relations', sub: '-30g → +20 relations', col: '#60a5fa' },
-                  { id: 'war', label: 'Declare War', sub: 'Pick a target to conquer', col: '#fb923c' },
-                  ...(player?.atWar?.length > 0 ? [{ id: 'peace', label: 'Sue for Peace', sub: '-50g → end war', col: '#a78bfa' }] : []),
-                ].map(a => (
-                  <button key={a.id} onClick={() => setAction(action === a.id ? null : a.id)} style={{
-                    padding: '0.5rem 0.75rem', textAlign: 'left', borderRadius: '0.375rem', cursor: 'pointer',
-                    background: action === a.id ? `${a.col}22` : 'rgba(0,0,0,0.3)',
-                    border: `2px solid ${action === a.id ? a.col : `${a.col}44`}`,
-                  }}>
-                    <div style={{ fontWeight: 'bold', color: a.col, fontSize: '0.875rem' }}>{a.label}</div>
-                    <div style={{ color: `${a.col}99`, fontSize: '0.75rem' }}>{a.sub}</div>
-                  </button>
-                ))}
-              </div>
-              {action && ['diplomacy', 'war', 'peace'].includes(action) && (
-                <div style={{ marginTop: '0.75rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#fbbf24', marginBottom: '0.25rem' }}>Select target:</div>
-                  <select value={targetId || ''} onChange={e => setTargetId(parseInt(e.target.value))}
-                    style={{ width: '100%', padding: '0.375rem', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(217,119,6,0.5)', borderRadius: '0.25rem', color: '#fef3c7', fontSize: '0.875rem' }}>
-                    <option value="">-- Select --</option>
-                    {others.map(f => <option key={f.id} value={f.id}>{f.name} ({f.territories} ter.) mil:{f.militaryStrength}</option>)}
-                  </select>
-                </div>
-              )}
-              {action && (
-                <button onClick={executeAction} style={{ marginTop: '0.75rem', width: '100%', padding: '0.5rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  Execute
-                </button>
-              )}
-            </div>
-
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.75rem' }}>Other Dynasties</h2>
-              <div style={{ maxHeight: '14rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {others.map(f => {
-                  const rel = player?.relations[f.id] || 0;
-                  const atWar = player?.atWar.includes(f.id);
-                  return (
-                    <div key={f.id} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '0.875rem' }}>{f.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'rgba(251,191,36,0.6)' }}>{f.ruler.name}</div>
-                        </div>
-                        <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
-                          <div style={{ color: '#fbbf24' }}>{f.territories} ter.</div>
-                          <div style={{ color: 'rgba(251,191,36,0.6)' }}>⚔️ {f.militaryStrength}</div>
-                        </div>
-                      </div>
-                      {atWar ? (
-                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: 'rgba(127,29,29,0.5)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: '0.25rem', color: '#fca5a5' }}>⚔️ At War</span>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div style={{ flex: 1, background: 'rgba(0,0,0,0.5)', height: '4px', borderRadius: '9999px' }}>
-                            <div style={{ height: '100%', borderRadius: '9999px', background: rel > 50 ? '#22c55e' : rel > 0 ? '#eab308' : rel > -50 ? '#f97316' : '#ef4444', width: `${Math.abs(rel)}%` }} />
-                          </div>
-                          <span style={{ fontSize: '0.7rem', color: '#fbbf24' }}>{rel > 0 ? '+' : ''}{rel}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Chronicle */}
-        <div style={{ ...card, marginBottom: '1rem' }}>
-          <div style={{ fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.5rem', fontSize: '0.875rem' }}>📜 Chronicles</div>
-          <div style={{ maxHeight: '8rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            {log.map((l, i) => (
-              <div key={i} style={{ fontSize: '0.8rem', color: 'rgba(254,243,199,0.75)', borderLeft: '2px solid rgba(217,119,6,0.3)', paddingLeft: '0.5rem' }}>{l}</div>
-            ))}
-          </div>
-        </div>
 
         {/* End Turn */}
         <div style={{ textAlign: 'center' }}>
