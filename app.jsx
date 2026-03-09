@@ -59,10 +59,14 @@ const DYNASTY_DATA = {
 
 const DYNASTY_NAMES = Object.keys(DYNASTY_DATA);
 const TRAITS = [
-  { name: 'Brilliant Strategist' }, { name: 'Wise Administrator' },
-  { name: 'Charismatic Diplomat' }, { name: 'Ambitious' },
-  { name: 'Scholarly Patron' }, { name: 'Ruthless' },
-  { name: 'Pious' }, { name: 'Cunning' },
+  { id: 'strategist', name: 'Brilliant Strategist', desc: '+15% Battle Power' },
+  { id: 'administrator', name: 'Wise Administrator', desc: '+10% Gold/Food Income' },
+  { id: 'diplomat', name: 'Charismatic Diplomat', desc: '-20% Diplomacy Cost' },
+  { id: 'ambitious', name: 'Ambitious', desc: '+5 Prestige/mo, -5 Stability/mo' },
+  { id: 'patron', name: 'Scholarly Patron', desc: '+2 Culture/mo' },
+  { id: 'ruthless', name: 'Ruthless', desc: '+20% Battle Lethality, -10 All Relations' },
+  { id: 'pious', name: 'Pious', desc: '+10 Max Stability' },
+  { id: 'cunning', name: 'Cunning', desc: '+5% Maneuver in Battle' },
 ];
 const EVENTS = [
   {
@@ -249,6 +253,7 @@ function MandalaOfKings() {
 
   const executeAction = () => {
     if (!action || !player) return;
+    const hasTrait = (tid) => player.ruler.traits.some(t => t.id === tid);
     let p = { ...player };
     let fs = [...factions];
     if (action === 'develop') {
@@ -262,9 +267,10 @@ function MandalaOfKings() {
       addLog('⚔️ Army recruited: +500 military strength');
     }
     if (action === 'diplomacy') {
+      const cost = hasTrait('diplomat') ? 24 : 30;
       const tgt = fs.find(f => f.id === targetId);
-      if (!tgt || p.gold < 30) { addLog('⚠️ Need 30 gold & a target'); return; }
-      p.gold -= 30;
+      if (!tgt || p.gold < cost) { addLog(`⚠️ Need ${cost} gold & a target`); return; }
+      p.gold -= cost;
       p.relations[tgt.id] = Math.min(100, (p.relations[tgt.id] || 0) + 20);
       tgt.relations[p.id] = p.relations[tgt.id];
       addLog(`🤝 Relations improved with ${tgt.name}`);
@@ -300,10 +306,15 @@ function MandalaOfKings() {
       setLog(p => [msg, ...p].slice(0, 10));
     };
 
-    let p = { ...player };
-    const goldIncome = p.territories * 20 + rnd(-10, 20);
-    const foodIncome = p.territories * 15 + rnd(-5, 15);
-    const manpowerGrowth = Math.floor(p.territories * 5 * (p.stability / 100));
+    const hasTrait = (tid) => p.ruler.traits.some(t => t.id === tid);
+    let goldIncome = p.territories * 20 + rnd(-10, 20);
+    let foodIncome = p.territories * 15 + rnd(-5, 15);
+    let manpowerGrowth = Math.floor(p.territories * 5 * (p.stability / 100));
+
+    if (hasTrait('administrator')) { goldIncome = Math.floor(goldIncome * 1.1); foodIncome = Math.floor(foodIncome * 1.1); }
+    if (hasTrait('ambitious')) { setPrestige(v => v + 5); p.stability = Math.max(0, p.stability - 5); localAddLog('⭐ Ambitious: +5 Prestige, -5 Stability'); }
+    if (hasTrait('patron')) { setCulture(v => v + 2); localAddLog('📜 Patron: +2 Culture'); }
+    if (hasTrait('pious')) p.stability = Math.min(100, p.stability + 2);
 
     p.gold += goldIncome;
     p.food += foodIncome;
@@ -313,7 +324,13 @@ function MandalaOfKings() {
     let updatedFactions = factions.map(f => {
       if (f.id === 0) return p;
       if (!p.atWar.includes(f.id)) return f;
-      const pp = p.militaryStrength * (1 + Math.random() * 0.5);
+
+      let pMod = 1 + Math.random() * 0.5;
+      if (hasTrait('strategist')) pMod += 0.15;
+      if (hasTrait('ruthless')) pMod += 0.2;
+      if (hasTrait('cunning')) pMod += 0.05;
+
+      const pp = p.militaryStrength * pMod;
       const ep = f.militaryStrength * (1 + Math.random() * 0.5);
       const enemy = { ...f };
       if (pp > ep * 1.3) {
@@ -589,7 +606,9 @@ function MandalaOfKings() {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {player?.ruler.traits.map((t, i) => (
-              <span key={i} style={{ padding: '0.15rem 0.5rem', background: 'rgba(88,28,135,0.5)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '9999px', fontSize: '0.7rem', color: '#e9d5ff' }}>{t.name}</span>
+              <span key={i} title={t.desc} style={{ padding: '0.15rem 0.5rem', background: 'rgba(88,28,135,0.5)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '9999px', fontSize: '0.7rem', color: '#e9d5ff', cursor: 'help' }}>
+                {t.name}
+              </span>
             ))}
           </div>
         </div>
