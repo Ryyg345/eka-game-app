@@ -182,6 +182,7 @@ function MandalaOfKings() {
   const [savedState, setSavedState] = useState(null);
   const [victoryType, setVictoryType] = useState(null);
   const [victoryPrompt, setVictoryPrompt] = useState(false);
+  const [turnSummary, setTurnSummary] = useState(null);
 
   const addLog = (msg) => setLog(p => [msg, ...p].slice(0, 10));
 
@@ -293,10 +294,20 @@ function MandalaOfKings() {
     const ny = month === 12 ? year + 1 : year;
     setMonth(nm); setYear(ny);
 
+    let turnLogs = [];
+    const localAddLog = (msg) => {
+      turnLogs.push(msg);
+      setLog(p => [msg, ...p].slice(0, 10));
+    };
+
     let p = { ...player };
-    p.gold += p.territories * 20 + rnd(-10, 20);
-    p.food += p.territories * 15 + rnd(-5, 15);
-    p.manpower += Math.floor(p.territories * 5 * (p.stability / 100));
+    const goldIncome = p.territories * 20 + rnd(-10, 20);
+    const foodIncome = p.territories * 15 + rnd(-5, 15);
+    const manpowerGrowth = Math.floor(p.territories * 5 * (p.stability / 100));
+
+    p.gold += goldIncome;
+    p.food += foodIncome;
+    p.manpower += manpowerGrowth;
     p.food -= p.manpower / 50;
 
     let updatedFactions = factions.map(f => {
@@ -311,24 +322,31 @@ function MandalaOfKings() {
         p.militaryStrength -= rnd(100, 300);
         enemy.militaryStrength -= rnd(200, 500);
         setPrestige(v => v + 15);
-        addLog(`⚔️ Victory vs ${enemy.name}! +${gain} territories`);
-        if (enemy.territories <= 0) { p.atWar = p.atWar.filter(id => id !== enemy.id); addLog(`🏆 ${enemy.name} has fallen!`); }
+        localAddLog(`⚔️ Victory vs ${enemy.name}! +${gain} territories`);
+        if (enemy.territories <= 0) { p.atWar = p.atWar.filter(id => id !== enemy.id); localAddLog(`🏆 ${enemy.name} has fallen!`); }
       } else if (ep > pp * 1.3) {
         const lose = rnd(1, Math.min(2, p.territories));
         p.territories -= lose; enemy.territories += lose;
         p.militaryStrength -= rnd(200, 500);
         enemy.militaryStrength -= rnd(100, 300);
         setPrestige(v => Math.max(0, v - 10));
-        addLog(`💔 Defeat vs ${enemy.name}! -${lose} territories`);
+        localAddLog(`💔 Defeat vs ${enemy.name}! -${lose} territories`);
       } else {
         p.militaryStrength -= rnd(50, 150);
         enemy.militaryStrength -= rnd(50, 150);
-        addLog(`⚔️ Stalemate with ${enemy.name}`);
+        localAddLog(`⚔️ Stalemate with ${enemy.name}`);
       }
       return enemy;
     });
 
     setFactions(updatedFactions); setPlayer(p);
+
+    const summary = [
+      `💰 Economy: +${goldIncome} Gold, +${foodIncome} Food`,
+      `👥 Growth: +${manpowerGrowth} Manpower`,
+      ...turnLogs
+    ];
+    setTurnSummary(summary);
 
     const alive = updatedFactions.filter(f => !f.isPlayer && f.territories > 0);
     if (!victoryPrompt) {
@@ -753,6 +771,31 @@ function MandalaOfKings() {
                 Continue Playing
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Turn Summary Modal */}
+      {turnSummary && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+          <div style={{ background: 'linear-gradient(135deg,#1e1b4b,#312e81)', border: '2px solid #818cf8', borderRadius: '1rem', padding: '1.5rem', maxWidth: '28rem', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif' }}>Turn {month}/{year} Report</h2>
+              <div style={{ fontSize: '1.5rem' }}>📜</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {turnSummary.map((line, i) => (
+                <div key={i} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', borderLeft: `3px solid ${line.includes('Victory') ? '#4ade80' : line.includes('Defeat') ? '#ef4444' : '#60a5fa'}`, color: '#fef3c7', fontSize: '0.9rem' }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setTurnSummary(null)}
+              style={{ width: '100%', padding: '0.875rem', background: 'linear-gradient(to right,#4f46e5,#6366f1)', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem' }}
+            >
+              Close Report
+            </button>
           </div>
         </div>
       )}
