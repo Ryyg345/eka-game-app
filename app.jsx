@@ -150,31 +150,65 @@ const rndName = (dynasty) => {
 };
 
 const REGIONS = [
-  { id: 'gandhara', name: 'Gāndhāra', x: 80, y: 100, neighbors: ['kashmir', 'punjab', 'sindh'] },
-  { id: 'kashmir', name: 'Kaśmīra', x: 150, y: 70, neighbors: ['gandhara', 'punjab', 'tibet'] },
-  { id: 'punjab', name: 'Pañcanada', x: 180, y: 150, neighbors: ['gandhara', 'kashmir', 'kanyakubja', 'gurjara', 'sindh'] },
-  { id: 'sindh', name: 'Sindhu', x: 80, y: 220, neighbors: ['gandhara', 'punjab', 'gurjara'] },
-  { id: 'gurjara', name: 'Gūrjara', x: 180, y: 280, neighbors: ['sindh', 'punjab', 'kanyakubja', 'malava', 'maharashtra'] },
-  { id: 'kanyakubja', name: 'Kanyakubja', x: 300, y: 180, neighbors: ['punjab', 'gurjara', 'malava', 'nepal', 'magadha'] },
-  { id: 'nepal', name: 'Nepāla', x: 380, y: 140, neighbors: ['kanyakubja', 'tibet', 'magadha'] },
-  { id: 'tibet', name: 'Trivistapa', x: 450, y: 80, neighbors: ['kashmir', 'nepal', 'magadha', 'kamarupa'] },
-  { id: 'magadha', name: 'Magadha', x: 450, y: 200, neighbors: ['kanyakubja', 'nepal', 'gauda', 'tibet', 'kalinga'] },
-  { id: 'gauda', name: 'Gauḍa', x: 550, y: 220, neighbors: ['magadha', 'kamarupa', 'kalinga'] },
-  { id: 'kamarupa', name: 'Kāmarūpa', x: 620, y: 180, neighbors: ['gauda', 'tibet'] },
-  { id: 'malava', name: 'Mālava', x: 280, y: 320, neighbors: ['gurjara', 'kanyakubja', 'maharashtra', 'kalinga'] },
-  { id: 'kalinga', name: 'Kaliṅga', x: 420, y: 350, neighbors: ['magadha', 'gauda', 'malava', 'andhra'] },
-  { id: 'maharashtra', name: 'Mahārāṣṭra', x: 250, y: 450, neighbors: ['gurjara', 'malava', 'karnataka', 'andhra'] },
-  { id: 'andhra', name: 'Āndhra', x: 380, y: 480, neighbors: ['maharashtra', 'kalinga', 'karnataka', 'cholamandala'] },
-  { id: 'karnataka', name: 'Karṇāṭaka', x: 250, y: 560, neighbors: ['maharashtra', 'andhra', 'cholamandala', 'chera'] },
-  { id: 'cholamandala', name: 'Coḷamaṇḍala', x: 350, y: 620, neighbors: ['andhra', 'karnataka', 'chera', 'lanka'] },
-  { id: 'chera', name: 'Cera', x: 270, y: 680, neighbors: ['karnataka', 'cholamandala'] },
-  { id: 'lanka', name: 'Laṅkā', x: 380, y: 730, neighbors: ['cholamandala'] },
+  { id: 'gandhara', name: 'Gāndhāra', x: 100, y: 120, neighbors: ['purushapura', 'takshashila', 'sindh'] },
+  { id: 'purushapura', name: 'Purushapura', x: 80, y: 150, neighbors: ['gandhara', 'takshashila'] },
+  { id: 'takshashila', name: 'Takṣaśilā', x: 150, y: 100, neighbors: ['gandhara', 'punjab', 'kashmir'] },
+  { id: 'kashmir', name: 'Kaśmīra', x: 200, y: 70, neighbors: ['takshashila', 'punjab', 'tibet'] },
+  { id: 'punjab', name: 'Pañcanada', x: 220, y: 160, neighbors: ['takshashila', 'kashmir', 'indraprastha', 'gurjara', 'sindh'] },
+  { id: 'multan', name: 'Multān', x: 120, y: 200, neighbors: ['punjab', 'sindh', 'gurjara'] },
+  { id: 'sindh', name: 'Sindhu', x: 100, y: 280, neighbors: ['gandhara', 'multan', 'gurjara'] },
+  { id: 'indraprastha', name: 'Indraprastha', x: 300, y: 140, neighbors: ['punjab', 'mathura', 'sthanvishvara'] },
+  { id: 'sthanvishvara', name: 'Sthānvīśvara', x: 260, y: 120, neighbors: ['indraprastha', 'punjab', 'kanyakubja'] },
+  { id: 'mathura', name: 'Mathurā', x: 320, y: 180, neighbors: ['indraprastha', 'kanyakubja', 'ujjayini'] },
+  { id: 'kanyakubja', name: 'Kanyākubja', x: 380, y: 160, neighbors: ['sthanvishvara', 'mathura', 'ayodhya', 'nepal'] },
+  { id: 'ayodhya', name: 'Ayodhyā', x: 450, y: 150, neighbors: ['kanyakubja', 'prayagraj', 'shravasti'] },
+  { id: 'shravasti', name: 'Śrāvastī', x: 480, y: 120, neighbors: ['ayodhya', 'nepal'] },
+  { id: 'nepal', name: 'Nepāla', x: 480, y: 80, neighbors: ['kanyakubja', 'shravasti', 'tibet', 'vaishali'] },
+  { id: 'vaishali', name: 'Vaiśālī', x: 540, y: 130, neighbors: ['nepal', 'magadha', 'pataliputra'] },
+  { id: 'prayagraj', name: 'Prayāgrāj', x: 430, y: 220, neighbors: ['ayodhya', 'kashi', 'vidisha'] },
+  { id: 'kashi', name: 'Kāśī', x: 480, y: 210, neighbors: ['prayagraj', 'magadha', 'gaya'] },
+  { id: 'pataliputra', name: 'Pāṭaliputra', x: 550, y: 180, neighbors: ['vaishali', 'magadha', 'gauda'] },
+  { id: 'gaya', name: 'Gayā', x: 530, y: 230, neighbors: ['kashi', 'magadha', 'paundra'] },
+  { id: 'magadha', name: 'Magadha', x: 500, y: 250, neighbors: ['kashi', 'pataliputra', 'gaya', 'kalinga'] },
+  { id: 'gauda', name: 'Gauḍa', x: 620, y: 200, neighbors: ['pataliputra', 'vanga', 'paundra', 'kamarupa'] },
+  { id: 'paundra', name: 'Pauṇḍra', x: 580, y: 250, neighbors: ['gaya', 'gauda', 'vanga', 'kalinga'] },
+  { id: 'vanga', name: 'Vaṅga', x: 650, y: 250, neighbors: ['gauda', 'paundra', 'pragjyotisha'] },
+  { id: 'pragjyotisha', name: 'Prāgjyotiṣa', x: 720, y: 220, neighbors: ['vanga', 'kamarupa'] },
+  { id: 'kamarupa', name: 'Kāmarūpa', x: 750, y: 180, neighbors: ['pragjyotisha', 'gauda', 'tibet'] },
+  { id: 'tibet', name: 'Triviṣṭapa', x: 550, y: 50, neighbors: ['kashmir', 'nepal', 'kamarupa'] },
+  { id: 'ujjayini', name: 'Ujjayinī', x: 280, y: 320, neighbors: ['mathura', 'dhara', 'vidisha', 'gurjara'] },
+  { id: 'dhara', name: 'Dhārā', x: 240, y: 350, neighbors: ['ujjayini', 'gurjara', 'maharashtra'] },
+  { id: 'vidisha', name: 'Vidiśā', x: 350, y: 300, neighbors: ['ujjayini', 'prayagraj', 'tripuri'] },
+  { id: 'tripuri', name: 'Tripurī', x: 420, y: 280, neighbors: ['vidisha', 'jejakabhukti', 'kalinga'] },
+  { id: 'jejakabhukti', name: 'Jejakabhukti', x: 400, y: 240, neighbors: ['tripuri', 'prayagraj'] },
+  { id: 'gurjara', name: 'Gūrjara', x: 180, y: 260, neighbors: ['sindh', 'multan', 'punjab', 'valabhi', 'ujjayini', 'dhara'] },
+  { id: 'valabhi', name: 'Valabhī', x: 140, y: 320, neighbors: ['gurjara', 'somnath', 'dvaraka'] },
+  { id: 'dvaraka', name: 'Dvārakā', x: 50, y: 350, neighbors: ['valabhi', 'somnath'] },
+  { id: 'somnath', name: 'Somnāth', x: 100, y: 400, neighbors: ['dvaraka', 'valabhi', 'anarta'] },
+  { id: 'anarta', name: 'Ānarta', x: 180, y: 350, neighbors: ['valabhi', 'somnath', 'ujjayini'] },
+  { id: 'maharashtra', name: 'Mahārāṣṭra', x: 250, y: 450, neighbors: ['dhara', 'pratishthana', 'nasikya'] },
+  { id: 'pratishthana', name: 'Pratiṣṭhāna', x: 300, y: 480, neighbors: ['maharashtra', 'manyakheta', 'tagara'] },
+  { id: 'manyakheta', name: ' Mānyakheṭa', x: 320, y: 550, neighbors: ['pratishthana', 'vatapi', 'andhra'] },
+  { id: 'vatapi', name: 'Vātāpi', x: 280, y: 600, neighbors: ['manyakheta', 'karnataka', 'nasikya'] },
+  { id: 'nasikya', name: 'Nāsikya', x: 220, y: 500, neighbors: ['maharashtra', 'vatapi'] },
+  { id: 'tagara', name: 'Tagara', x: 350, y: 500, neighbors: ['pratishthana', 'andhra'] },
+  { id: 'andhra', name: 'Āndhra', x: 450, y: 520, neighbors: ['manyakheta', 'kalinga', 'amaravati', 'tagara'] },
+  { id: 'amaravati', name: 'Amarāvatī', x: 480, y: 580, neighbors: ['andhra', 'chola'] },
+  { id: 'kalinga', name: 'Kaliṅga', x: 500, y: 350, neighbors: ['magadha', 'paundra', 'tripuri', 'andhra'] },
+  { id: 'karnataka', name: 'Karṇāṭaka', x: 300, y: 680, neighbors: ['vatapi', 'chera', 'chola'] },
+  { id: 'kanchipuram', name: 'Kāñcīpuram', x: 420, y: 650, neighbors: ['chola', 'andhra'] },
+  { id: 'chola', name: 'Coḷamaṇḍala', x: 380, y: 720, neighbors: ['amaravati', 'kanchipuram', 'tanjavur', 'karnataka'] },
+  { id: 'tanjavur', name: 'Tañjāvūr', x: 400, y: 780, neighbors: ['chola', 'madurai', 'lanka'] },
+  { id: 'madurai', name: 'Madurai', x: 350, y: 830, neighbors: ['tanjavur', 'chera', 'lanka'] },
+  { id: 'chera', name: 'Cera', x: 280, y: 800, neighbors: ['karnataka', 'madurai'] },
+  { id: 'lanka', name: 'Laṅkā', x: 450, y: 900, neighbors: ['madurai', 'tanjavur', 'anuradhapura'] },
+  { id: 'anuradhapura', name: 'Anurādhapura', x: 420, y: 880, neighbors: ['lanka'] },
 ];
 
 const DYNASTY_REGIONS = {
-  'Chalukya': 'karnataka', 'Pallava': 'andhra', 'Rashtrakuta': 'maharashtra', 'Pratihara': 'gurjara',
-  'Pala': 'gauda', 'Chola': 'cholamandala', 'Pandya': 'cholamandala', 'Chera': 'chera',
-  'Kashmir': 'kashmir', 'Chandela': 'malava', 'Paramara': 'malava'
+  'Chalukya': 'vatapi', 'Pallava': 'kanchipuram', 'Rashtrakuta': 'manyakheta', 'Pratihara': 'kanyakubja',
+  'Pala': 'pataliputra', 'Chola': 'tanjavur', 'Pandya': 'madurai', 'Chera': 'chera',
+  'Kashmir': 'kashmir', 'Chandela': 'jejakabhukti', 'Paramara': 'dhara'
 };
 
 const makeChar = (dynasty, isSelf) => ({
@@ -694,8 +728,8 @@ function MandalaOfKings() {
   const MandalaMap = ({ factions, player }) => {
     const FACTION_COLORS = ['#fbbf24', '#f87171', '#60a5fa', '#4ade80', '#a78bfa', '#fb923c', '#2dd4bf', '#e879f9', '#94a3b8', '#facc15'];
     return (
-      <div style={{ position: 'relative', width: '100%', paddingBottom: '110%', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.2)', overflow: 'hidden' }}>
-        <svg viewBox="0 0 700 800" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+      <div style={{ position: 'relative', width: '100%', paddingBottom: '120%', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.2)', overflow: 'hidden' }}>
+        <svg viewBox="0 0 850 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
           {/* Historical Borders & Connections */}
           {REGIONS.map(reg => reg.neighbors.map(nb => {
             const other = REGIONS.find(r => r.id === nb);
@@ -833,7 +867,7 @@ function MandalaOfKings() {
                     {(action === 'diplomacy' || action === 'war' || action === 'peace') && (
                       <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1f2937', color: 'white', border: '1px solid #374151', borderRadius: '0.25rem', padding: '0.25rem', fontSize: '0.75rem' }}>
                         <option value="">Select Target Dynasty</option>
-                        {others.map(f => <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0})</option>)}
+                        {others.map(f => <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0}) [⚔️ {f.militaryStrength}]</option>)}
                       </select>
                     )}
                   </div>
@@ -861,11 +895,17 @@ function MandalaOfKings() {
             <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>Rival Mandalas</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               {others.map(f => (
-                <div key={f.id} style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid rgba(217,119,6,0.1)' }}>
-                  <span>{f.name} ({f.regionIds.length} reg)</span>
-                  <span style={{ color: (player?.relations[f.id] || 0) > 0 ? '#4ade80' : (player?.relations[f.id] || 0) < 0 ? '#f87171' : '#94a3b8' }}>
-                    {player?.atWar.includes(f.id) ? '⚔️ War' : `Rel: ${player?.relations[f.id] || 0}`}
-                  </span>
+                <div key={f.id} style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)', padding: '0.6rem', borderRadius: '0.25rem', border: '1px solid rgba(217,119,6,0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ fontWeight: 'bold' }}>{f.name}</span>
+                    <span style={{ color: (player?.relations[f.id] || 0) > 0 ? '#4ade80' : (player?.relations[f.id] || 0) < 0 ? '#f87171' : '#94a3b8' }}>
+                      {player?.atWar.includes(f.id) ? '⚔️ War' : `Rel: ${player?.relations[f.id] || 0}`}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(254,243,199,0.7)' }}>
+                    <span>🏛️ {f.regionIds.length} regions</span>
+                    <span>⚔️ {f.militaryStrength} army</span>
+                  </div>
                 </div>
               ))}
             </div>
