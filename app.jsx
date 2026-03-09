@@ -329,6 +329,7 @@ function MandalaOfKings() {
       setLog(p => [msg, ...p].slice(0, 10));
     };
 
+    const p = { ...player };
     const hasTrait = (tid) => p.ruler.traits.some(t => t.id === tid);
     let goldIncome = p.territories * 20 + rnd(-10, 20);
     let foodIncome = p.territories * 15 + rnd(-5, 15);
