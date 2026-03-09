@@ -180,11 +180,15 @@ function MandalaOfKings() {
   const [prestige, setPrestige] = useState(20);
 
   // --- Auto-Save System ---
-  React.useEffect(() => {
-    if (screen === 'playing' && player) {
+  const performSave = () => {
+    if (player) {
       const gameState = { month, year, factions, player, culture, prestige, log };
       localStorage.setItem('mandala_save', JSON.stringify(gameState));
     }
+  };
+
+  React.useEffect(() => {
+    if (screen === 'playing') performSave();
   }, [month, year, factions, player, culture, prestige, screen]);
 
   const loadSave = () => {
@@ -854,22 +858,28 @@ function MandalaOfKings() {
       {/* Exit Confirmation Modal */}
       {showExitConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
-          <div style={{ background: 'linear-gradient(135deg,#450a0a,#7f1d1d)', border: '2px solid #ef4444', borderRadius: '1rem', padding: '2rem', maxWidth: '24rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+          <div style={{ background: 'linear-gradient(135deg,#1e1b4b,#312e81)', border: '2px solid #818cf8', borderRadius: '1rem', padding: '2rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚪</div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem', fontFamily: 'Georgia,serif' }}>Abandon Your Reign?</h2>
-            <p style={{ color: '#fca5a5', marginBottom: '2rem', fontSize: '0.95rem' }}>All unsaved progress will be lost. Are you sure you want to exit to the main menu?</p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem', fontFamily: 'Georgia,serif' }}>Exit Your Reign?</h2>
+            <p style={{ color: '#c4b5fd', marginBottom: '2rem', fontSize: '0.95rem' }}>Do you want to save your progress or walk away and abandon this dynasty?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <button
-                onClick={() => setShowExitConfirm(false)}
-                style={{ flex: 1, padding: '0.75rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '0.5rem', cursor: 'pointer' }}
+                onClick={() => { performSave(); setScreen('menu'); setShowExitConfirm(false); }}
+                style={{ width: '100%', padding: '0.875rem', background: 'linear-gradient(to right,#059669,#10b981)', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
               >
-                Cancel
+                💾 Save & Exit
               </button>
               <button
                 onClick={() => { setScreen('menu'); setShowExitConfirm(false); clearSave(); }}
-                style={{ flex: 1, padding: '0.75rem', background: '#ef4444', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '0.875rem', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '0.5rem', cursor: 'pointer' }}
               >
-                Yes, Exit
+                🗑️ Abandon Reign
+              </button>
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                style={{ width: '100%', padding: '0.875rem', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', cursor: 'pointer' }}
+              >
+                Back to Game
               </button>
             </div>
           </div>
