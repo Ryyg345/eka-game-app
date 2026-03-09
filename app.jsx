@@ -152,63 +152,61 @@ const rndName = (dynasty) => {
 const REGIONS = [
   { id: 'gandhara', name: 'Gāndhāra', x: 100, y: 120, neighbors: ['purushapura', 'takshashila', 'sindh'] },
   { id: 'purushapura', name: 'Purushapura', x: 80, y: 150, neighbors: ['gandhara', 'takshashila'] },
-  { id: 'takshashila', name: 'Takṣaśilā', x: 150, y: 100, neighbors: ['gandhara', 'punjab', 'kashmir'] },
-  { id: 'kashmir', name: 'Kaśmīra', x: 200, y: 70, neighbors: ['takshashila', 'punjab', 'tibet'] },
-  { id: 'punjab', name: 'Pañcanada', x: 220, y: 160, neighbors: ['takshashila', 'kashmir', 'indraprastha', 'gurjara', 'sindh'] },
-  { id: 'multan', name: 'Multān', x: 120, y: 200, neighbors: ['punjab', 'sindh', 'gurjara'] },
-  { id: 'sindh', name: 'Sindhu', x: 100, y: 280, neighbors: ['gandhara', 'multan', 'gurjara'] },
+  { id: 'takshashila', name: 'Takṣaśilā', x: 150, y: 100, neighbors: ['gandhara', 'punjab', 'shrinagara'] },
+  { id: 'shrinagara', name: 'Śrīnagara', x: 200, y: 70, neighbors: ['takshashila', 'punjab', 'tibet'] },
+  { id: 'punjab', name: 'Pañcanada', x: 220, y: 160, neighbors: ['takshashila', 'shrinagara', 'indraprastha', 'anahillapataka', 'sindh'] },
+  { id: 'multan', name: 'Multān', x: 120, y: 200, neighbors: ['punjab', 'sindh', 'anahillapataka'] },
+  { id: 'sindh', name: 'Sindhu', x: 100, y: 280, neighbors: ['gandhara', 'multan', 'anahillapataka'] },
   { id: 'indraprastha', name: 'Indraprastha', x: 300, y: 140, neighbors: ['punjab', 'mathura', 'sthanvishvara'] },
   { id: 'sthanvishvara', name: 'Sthānvīśvara', x: 260, y: 120, neighbors: ['indraprastha', 'punjab', 'kanyakubja'] },
   { id: 'mathura', name: 'Mathurā', x: 320, y: 180, neighbors: ['indraprastha', 'kanyakubja', 'ujjayini'] },
-  { id: 'kanyakubja', name: 'Kanyākubja', x: 380, y: 160, neighbors: ['sthanvishvara', 'mathura', 'ayodhya', 'nepal'] },
+  { id: 'kanyakubja', name: 'Kanyākubja', x: 380, y: 160, neighbors: ['sthanvishvara', 'mathura', 'ayodhya', 'kathmandap'] },
   { id: 'ayodhya', name: 'Ayodhyā', x: 450, y: 150, neighbors: ['kanyakubja', 'prayagraj', 'shravasti'] },
-  { id: 'shravasti', name: 'Śrāvastī', x: 480, y: 120, neighbors: ['ayodhya', 'nepal'] },
-  { id: 'nepal', name: 'Nepāla', x: 480, y: 80, neighbors: ['kanyakubja', 'shravasti', 'tibet', 'vaishali'] },
-  { id: 'vaishali', name: 'Vaiśālī', x: 540, y: 130, neighbors: ['nepal', 'magadha', 'pataliputra'] },
+  { id: 'shravasti', name: 'Śrāvastī', x: 480, y: 120, neighbors: ['ayodhya', 'kathmandap'] },
+  { id: 'kathmandap', name: 'Kāṣṭhamaṇḍapa', x: 480, y: 80, neighbors: ['kanyakubja', 'shravasti', 'tibet', 'vaishali'] },
+  { id: 'vaishali', name: 'Vaiśālī', x: 540, y: 130, neighbors: ['kathmandap', 'rajagriha', 'pataliputra'] },
   { id: 'prayagraj', name: 'Prayāgrāj', x: 430, y: 220, neighbors: ['ayodhya', 'kashi', 'vidisha'] },
-  { id: 'kashi', name: 'Kāśī', x: 480, y: 210, neighbors: ['prayagraj', 'magadha', 'gaya'] },
-  { id: 'pataliputra', name: 'Pāṭaliputra', x: 550, y: 180, neighbors: ['vaishali', 'magadha', 'gauda'] },
-  { id: 'gaya', name: 'Gayā', x: 530, y: 230, neighbors: ['kashi', 'magadha', 'paundra'] },
-  { id: 'magadha', name: 'Magadha', x: 500, y: 250, neighbors: ['kashi', 'pataliputra', 'gaya', 'kalinga'] },
-  { id: 'gauda', name: 'Gauḍa', x: 620, y: 200, neighbors: ['pataliputra', 'vanga', 'paundra', 'kamarupa'] },
-  { id: 'paundra', name: 'Pauṇḍra', x: 580, y: 250, neighbors: ['gaya', 'gauda', 'vanga', 'kalinga'] },
-  { id: 'vanga', name: 'Vaṅga', x: 650, y: 250, neighbors: ['gauda', 'paundra', 'pragjyotisha'] },
+  { id: 'kashi', name: 'Kāśī', x: 480, y: 210, neighbors: ['prayagraj', 'rajagriha', 'gaya'] },
+  { id: 'pataliputra', name: 'Pāṭaliputra', x: 550, y: 180, neighbors: ['vaishali', 'rajagriha', 'gaudapura'] },
+  { id: 'gaya', name: 'Gayā', x: 530, y: 230, neighbors: ['kashi', 'rajagriha', 'paundra'] },
+  { id: 'rajagriha', name: 'Rājagṛha', x: 500, y: 250, neighbors: ['kashi', 'pataliputra', 'gaya', 'tosali'] },
+  { id: 'gaudapura', name: 'Gauḍapura', x: 620, y: 200, neighbors: ['pataliputra', 'vanga', 'paundra', 'kamarupa'] },
+  { id: 'paundra', name: 'Pauṇḍra', x: 580, y: 250, neighbors: ['gaya', 'gaudapura', 'vanga', 'tosali'] },
+  { id: 'vanga', name: 'Vaṅga', x: 650, y: 250, neighbors: ['gaudapura', 'paundra', 'pragjyotisha'] },
   { id: 'pragjyotisha', name: 'Prāgjyotiṣa', x: 720, y: 220, neighbors: ['vanga', 'kamarupa'] },
-  { id: 'kamarupa', name: 'Kāmarūpa', x: 750, y: 180, neighbors: ['pragjyotisha', 'gauda', 'tibet'] },
-  { id: 'tibet', name: 'Triviṣṭapa', x: 550, y: 50, neighbors: ['kashmir', 'nepal', 'kamarupa'] },
-  { id: 'ujjayini', name: 'Ujjayinī', x: 280, y: 320, neighbors: ['mathura', 'dhara', 'vidisha', 'gurjara'] },
-  { id: 'dhara', name: 'Dhārā', x: 240, y: 350, neighbors: ['ujjayini', 'gurjara', 'maharashtra'] },
+  { id: 'kamarupa', name: 'Kāmarūpa', x: 750, y: 180, neighbors: ['pragjyotisha', 'gaudapura', 'tibet'] },
+  { id: 'tibet', name: 'Triviṣṭapa', x: 550, y: 50, neighbors: ['shrinagara', 'kathmandap', 'kamarupa'] },
+  { id: 'ujjayini', name: 'Ujjayinī', x: 280, y: 320, neighbors: ['mathura', 'dhara', 'vidisha', 'anahillapataka'] },
+  { id: 'dhara', name: 'Dhārā', x: 240, y: 350, neighbors: ['ujjayini', 'anahillapataka', 'maharashtra'] },
   { id: 'vidisha', name: 'Vidiśā', x: 350, y: 300, neighbors: ['ujjayini', 'prayagraj', 'tripuri'] },
-  { id: 'tripuri', name: 'Tripurī', x: 420, y: 280, neighbors: ['vidisha', 'jejakabhukti', 'kalinga'] },
-  { id: 'jejakabhukti', name: 'Jejakabhukti', x: 400, y: 240, neighbors: ['tripuri', 'prayagraj'] },
-  { id: 'gurjara', name: 'Gūrjara', x: 180, y: 260, neighbors: ['sindh', 'multan', 'punjab', 'valabhi', 'ujjayini', 'dhara'] },
-  { id: 'valabhi', name: 'Valabhī', x: 140, y: 320, neighbors: ['gurjara', 'somnath', 'dvaraka'] },
+  { id: 'tripuri', name: 'Tripurī', x: 420, y: 280, neighbors: ['vidisha', 'khajuraho', 'tosali'] },
+  { id: 'khajuraho', name: 'Khajurāho', x: 400, y: 240, neighbors: ['tripuri', 'prayagraj'] },
+  { id: 'anahillapataka', name: 'Anahillapāṭaka', x: 180, y: 260, neighbors: ['sindh', 'multan', 'punjab', 'valabhi', 'ujjayini', 'dhara'] },
+  { id: 'valabhi', name: 'Valabhī', x: 140, y: 320, neighbors: ['anahillapataka', 'somnath', 'dvaraka'] },
   { id: 'dvaraka', name: 'Dvārakā', x: 50, y: 350, neighbors: ['valabhi', 'somnath'] },
   { id: 'somnath', name: 'Somnāth', x: 100, y: 400, neighbors: ['dvaraka', 'valabhi', 'anarta'] },
   { id: 'anarta', name: 'Ānarta', x: 180, y: 350, neighbors: ['valabhi', 'somnath', 'ujjayini'] },
   { id: 'maharashtra', name: 'Mahārāṣṭra', x: 250, y: 450, neighbors: ['dhara', 'pratishthana', 'nasikya'] },
   { id: 'pratishthana', name: 'Pratiṣṭhāna', x: 300, y: 480, neighbors: ['maharashtra', 'manyakheta', 'tagara'] },
-  { id: 'manyakheta', name: ' Mānyakheṭa', x: 320, y: 550, neighbors: ['pratishthana', 'vatapi', 'andhra'] },
-  { id: 'vatapi', name: 'Vātāpi', x: 280, y: 600, neighbors: ['manyakheta', 'karnataka', 'nasikya'] },
+  { id: 'manyakheta', name: ' Mānyakheṭa', x: 320, y: 550, neighbors: ['pratishthana', 'vatapi', 'amaravati'] },
+  { id: 'vatapi', name: 'Vātāpi', x: 280, y: 600, neighbors: ['manyakheta', 'banavasi', 'nasikya'] },
   { id: 'nasikya', name: 'Nāsikya', x: 220, y: 500, neighbors: ['maharashtra', 'vatapi'] },
-  { id: 'tagara', name: 'Tagara', x: 350, y: 500, neighbors: ['pratishthana', 'andhra'] },
-  { id: 'andhra', name: 'Āndhra', x: 450, y: 520, neighbors: ['manyakheta', 'kalinga', 'amaravati', 'tagara'] },
-  { id: 'amaravati', name: 'Amarāvatī', x: 480, y: 580, neighbors: ['andhra', 'chola'] },
-  { id: 'kalinga', name: 'Kaliṅga', x: 500, y: 350, neighbors: ['magadha', 'paundra', 'tripuri', 'andhra'] },
-  { id: 'karnataka', name: 'Karṇāṭaka', x: 300, y: 680, neighbors: ['vatapi', 'chera', 'chola'] },
-  { id: 'kanchipuram', name: 'Kāñcīpuram', x: 420, y: 650, neighbors: ['chola', 'andhra'] },
-  { id: 'chola', name: 'Coḷamaṇḍala', x: 380, y: 720, neighbors: ['amaravati', 'kanchipuram', 'tanjavur', 'karnataka'] },
-  { id: 'tanjavur', name: 'Tañjāvūr', x: 400, y: 780, neighbors: ['chola', 'madurai', 'lanka'] },
-  { id: 'madurai', name: 'Madurai', x: 350, y: 830, neighbors: ['tanjavur', 'chera', 'lanka'] },
-  { id: 'chera', name: 'Cera', x: 280, y: 800, neighbors: ['karnataka', 'madurai'] },
-  { id: 'lanka', name: 'Laṅkā', x: 450, y: 900, neighbors: ['madurai', 'tanjavur', 'anuradhapura'] },
+  { id: 'tagara', name: 'Tagara', x: 350, y: 500, neighbors: ['pratishthana', 'amaravati'] },
+  { id: 'amaravati', name: 'Amarāvatī', x: 450, y: 520, neighbors: ['manyakheta', 'tosali', 'kanchipuram', 'tagara'] },
+  { id: 'tosali', name: 'Tosalī', x: 500, y: 350, neighbors: ['rajagriha', 'paundra', 'tripuri', 'amaravati'] },
+  { id: 'banavasi', name: 'Banavāsī', x: 300, y: 680, neighbors: ['vatapi', 'mahodoyapuram', 'tanjavur'] },
+  { id: 'kanchipuram', name: 'Kāñcīpuram', x: 420, y: 650, neighbors: ['tanjavur', 'amaravati'] },
+  { id: 'tanjavur', name: 'Tañjāvūr', x: 380, y: 720, neighbors: ['kanchipuram', 'madurai', 'banavasi'] },
+  { id: 'madurai', name: 'Madurai', x: 350, y: 830, neighbors: ['tanjavur', 'mahodoyapuram', 'lanka'] },
+  { id: 'mahodoyapuram', name: 'Mahodayapuram', x: 280, y: 800, neighbors: ['banavasi', 'madurai'] },
+  { id: 'lanka', name: 'Laṅkā', x: 450, y: 900, neighbors: ['madurai', 'anuradhapura'] },
   { id: 'anuradhapura', name: 'Anurādhapura', x: 420, y: 880, neighbors: ['lanka'] },
 ];
 
 const DYNASTY_REGIONS = {
   'Chalukya': 'vatapi', 'Pallava': 'kanchipuram', 'Rashtrakuta': 'manyakheta', 'Pratihara': 'kanyakubja',
-  'Pala': 'pataliputra', 'Chola': 'tanjavur', 'Pandya': 'madurai', 'Chera': 'chera',
-  'Kashmir': 'kashmir', 'Chandela': 'jejakabhukti', 'Paramara': 'dhara'
+  'Pala': 'pataliputra', 'Chola': 'tanjavur', 'Pandya': 'madurai', 'Chera': 'mahodoyapuram',
+  'Kashmir': 'shrinagara', 'Chandela': 'khajuraho', 'Paramara': 'dhara'
 };
 
 const makeChar = (dynasty, isSelf) => ({
@@ -727,27 +725,61 @@ function MandalaOfKings() {
   /* ─── MAIN GAME ─────────────────────────────────────────────────────── */
   const MandalaMap = ({ factions, player }) => {
     const FACTION_COLORS = ['#fbbf24', '#f87171', '#60a5fa', '#4ade80', '#a78bfa', '#fb923c', '#2dd4bf', '#e879f9', '#94a3b8', '#facc15'];
-    return (
-      <div style={{ position: 'relative', width: '100%', paddingBottom: '120%', background: 'rgba(0,0,0,0.2)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.2)', overflow: 'hidden' }}>
-        <svg viewBox="0 0 850 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          {/* Historical Borders & Connections */}
-          {REGIONS.map(reg => reg.neighbors.map(nb => {
-            const other = REGIONS.find(r => r.id === nb);
-            return <line key={`${reg.id}-${nb}`} x1={reg.x} y1={reg.y} x2={other.x} y2={other.y} stroke="rgba(217,119,6,0.1)" strokeWidth="1" />;
-          }))}
+    const [zoom, setZoom] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-          {/* Regions */}
-          {REGIONS.map(reg => {
-            const owner = factions.find(f => f.regionIds.includes(reg.id));
-            const color = owner ? FACTION_COLORS[owner.id % FACTION_COLORS.length] : '#334155';
-            const isPlayer = owner?.isPlayer;
-            return (
-              <g key={reg.id} style={{ cursor: 'pointer' }}>
-                <circle cx={reg.x} cy={reg.y} r={isPlayer ? 10 : 8} fill={color} stroke={isPlayer ? '#fff' : 'none'} strokeWidth="2" style={{ transition: 'all 0.3s' }} />
-                <text x={reg.x} y={reg.y + 18} textAnchor="middle" fill="#fef3c7" fontSize="10" style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{reg.name}</text>
-              </g>
-            );
-          })}
+    const handleWheel = (e) => {
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(z => Math.max(0.5, Math.min(4, z * delta)));
+    };
+
+    const handleMouseDown = (e) => {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    return (
+      <div 
+        style={{ position: 'relative', width: '100%', paddingBottom: '120%', background: 'rgba(0,0,0,0.3)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.3)', overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 10 }}>
+          <button onClick={(e) => { e.stopPropagation(); setZoom(z => Math.min(4, z * 1.2)); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>+</button>
+          <button onClick={(e) => { e.stopPropagation(); setZoom(z => Math.max(0.5, z * 0.8)); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>-</button>
+          <button onClick={(e) => { e.stopPropagation(); setZoom(1); setOffset({ x: 0, y: 0 }); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontSize: '10px', cursor: 'pointer' }}>Reset</button>
+        </div>
+        <svg viewBox="0 0 850 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+          <g transform={`translate(${offset.x}, ${offset.y}) scale(${zoom})`}>
+            {REGIONS.map(reg => reg.neighbors.map(nb => {
+              const other = REGIONS.find(r => r.id === nb);
+              if (!other) return null;
+              return <line key={`${reg.id}-${nb}`} x1={reg.x} y1={reg.y} x2={other.x} y2={other.y} stroke="rgba(217,119,6,0.08)" strokeWidth={1/zoom} />;
+            }))}
+            {REGIONS.map(reg => {
+              const owner = factions.find(f => f.regionIds.includes(reg.id));
+              const color = owner ? FACTION_COLORS[owner.id % FACTION_COLORS.length] : '#334155';
+              const isPlayer = owner?.isPlayer;
+              return (
+                <g key={reg.id}>
+                  <circle cx={reg.x} cy={reg.y} r={(isPlayer ? 10 : 8) / zoom} fill={color} stroke={isPlayer ? '#fff' : 'none'} strokeWidth={2/zoom} />
+                  <text x={reg.x} y={reg.y + 18/zoom} textAnchor="middle" fill="#fef3c7" fontSize={10/zoom} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{reg.name}</text>
+                </g>
+              );
+            })}
+          </g>
         </svg>
       </div>
     );
