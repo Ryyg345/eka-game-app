@@ -226,7 +226,7 @@ const makeFaction = (index, isPlayer = false) => {
 };
 
 const calcLegacy = (p, culture, prestige, years) =>
-  Math.floor(p.territories * 100 + p.gold * 0.5 + culture * 10 + prestige * 5 + years * 2);
+  Math.floor((p.regionIds?.length || 0) * 100 + p.gold * 0.5 + culture * 10 + prestige * 5 + years * 2);
 
 function MandalaOfKings() {
   const [screen, setScreen] = useState('menu');
@@ -706,7 +706,7 @@ function MandalaOfKings() {
             <div style={{ color: '#fbbf24', marginBottom: '0.25rem' }}>Legacy Score</div>
             <div style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '1.25rem' }}>{score}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              {[['Territories', player?.territories], ['Years Ruled', year - 600], ['Culture', culture], ['Prestige', prestige]].map(([l, v]) => (
+              {[['Territories', player?.regionIds.length || 0], ['Years Ruled', year - 600], ['Culture', culture], ['Prestige', prestige]].map(([l, v]) => (
                 <div key={l} style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '0.375rem' }}>
                   <div style={{ fontSize: '0.75rem', color: '#fbbf24' }}>{l}</div>
                   <div style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>{v}</div>
@@ -723,69 +723,6 @@ function MandalaOfKings() {
   }
 
   /* ─── MAIN GAME ─────────────────────────────────────────────────────── */
-  const MandalaMap = ({ factions, player }) => {
-    const FACTION_COLORS = ['#fbbf24', '#f87171', '#60a5fa', '#4ade80', '#a78bfa', '#fb923c', '#2dd4bf', '#e879f9', '#94a3b8', '#facc15'];
-    const [zoom, setZoom] = useState(1);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-    const handleWheel = (e) => {
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(z => Math.max(0.5, Math.min(4, z * delta)));
-    };
-
-    const handleMouseDown = (e) => {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-    };
-
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-    };
-
-    const handleMouseUp = () => setIsDragging(false);
-
-    return (
-      <div
-        style={{ position: 'relative', width: '100%', paddingBottom: '120%', background: 'rgba(0,0,0,0.3)', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.3)', overflow: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 10 }}>
-          <button onClick={(e) => { e.stopPropagation(); setZoom(z => Math.min(4, z * 1.2)); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>+</button>
-          <button onClick={(e) => { e.stopPropagation(); setZoom(z => Math.max(0.5, z * 0.8)); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>-</button>
-          <button onClick={(e) => { e.stopPropagation(); setZoom(1); setOffset({ x: 0, y: 0 }); }} style={{ width: '30px', height: '30px', background: 'rgba(217,119,6,0.8)', border: 'none', borderRadius: '4px', color: 'white', fontSize: '10px', cursor: 'pointer' }}>Reset</button>
-        </div>
-        <svg viewBox="0 0 850 1000" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          <image href="historical_map.png" x="0" y="0" width="850" height="1000" opacity="0.6" preserveAspectRatio="xMidYMid slice" style={{ pointerEvents: 'none' }} />
-          <g transform={`translate(${offset.x}, ${offset.y}) scale(${zoom})`}>
-            {REGIONS.map(reg => reg.neighbors.map(nb => {
-              const other = REGIONS.find(r => r.id === nb);
-              if (!other) return null;
-              return <line key={`${reg.id}-${nb}`} x1={reg.x} y1={reg.y} x2={other.x} y2={other.y} stroke="rgba(217,119,6,0.08)" strokeWidth={1 / zoom} />;
-            }))}
-            {REGIONS.map(reg => {
-              const owner = factions.find(f => f.regionIds.includes(reg.id));
-              const color = owner ? FACTION_COLORS[owner.id % FACTION_COLORS.length] : '#334155';
-              const isPlayer = owner?.isPlayer;
-              return (
-                <g key={reg.id}>
-                  <circle cx={reg.x} cy={reg.y} r={(isPlayer ? 10 : 8) / zoom} fill={color} stroke={isPlayer ? '#fff' : 'none'} strokeWidth={2 / zoom} />
-                  <text x={reg.x} y={reg.y + 18 / zoom} textAnchor="middle" fill="#fef3c7" fontSize={10 / zoom} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)', pointerEvents: 'none' }}>{reg.name}</text>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      </div>
-    );
-  };
-
   const others = factions.filter(f => !f.isPlayer && f.regionIds.length > 0);
   const score = calcLegacy(player, culture, prestige, year - 600);
   const bg = 'linear-gradient(135deg,#451a03,#450a0a,#3b0764)';
@@ -841,75 +778,131 @@ function MandalaOfKings() {
           </div>
         )}
 
-        {/* Resource bars & Map */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              {[
-                { label: 'Gold', val: Math.floor(player?.gold || 0), col: '#fbbf24', sub: `+${(player?.regionIds.length || 0) * 20}/mo` },
-                { label: 'Food', val: Math.floor(player?.food || 0), col: '#4ade80', sub: `+${(player?.regionIds.length || 0) * 15}/mo` },
-                { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', sub: '' },
-              ].map(r => (
-                <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
-                  <div style={{ fontSize: '0.7rem', color: r.col, marginBottom: '0.25rem' }}>{r.label}</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{r.val}</div>
-                  {r.sub && <div style={{ fontSize: '0.65rem', color: `${r.col}99` }}>{r.sub}</div>}
-                </div>
-              ))}
+        {/* Resources & Status */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+          {[
+            { label: 'Gold', val: Math.floor(player?.gold || 0), col: '#fbbf24', sub: `+${(player?.regionIds.length || 0) * 20}/mo` },
+            { label: 'Food', val: Math.floor(player?.food || 0), col: '#4ade80', sub: `+${(player?.regionIds.length || 0) * 15}/mo` },
+            { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', sub: 'Pool' },
+            { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', sub: 'Strength' },
+          ].map(r => (
+            <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}44`, borderRadius: '0.5rem', padding: '0.75rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.7rem', color: r.col, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{r.label}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{r.val}</div>
+              <div style={{ fontSize: '0.65rem', color: `${r.col}99` }}>{r.sub}</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              {[
-                { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', sub: '' },
-                { label: 'Stability', val: `${player?.stability || 0}%`, col: '#a78bfa', sub: '' },
-              ].map(r => (
-                <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
-                  <div style={{ fontSize: '0.7rem', color: r.col, marginBottom: '0.25rem' }}>{r.label}</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{r.val}</div>
-                </div>
-              ))}
-            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          {/* Royal Actions */}
+          <div style={card}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fbbf24' }}>📜 Royal Actions</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+              {['develop', 'recruit', 'diplomacy', 'war', 'peace'].map(a => (
+                <button key={a} onClick={() => setAction(a)} style={{ 
+                  padding: '0.6rem', 
+                  background: action === a ? '#fbbf24' : 'rgba(0,0,0,0.3)', 
+                  color: action === a ? '#000' : '#fbbf24', 
+                  border: '1px solid #fbbf24', 
+                  borderRadius: '0.375rem', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 'bold', 
+                  cursor: 'pointer',
+                  textTransform: 'uppercase'
+                }}>
+                  {a}
+                </button>
+              ))}
+            </div>
+
+            {action && (
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid rgba(217,119,6,0.3)' }}>
+                <div style={{ fontSize: '0.8rem', marginBottom: '0.75rem', color: '#fbbf24' }}>
+                  {action === 'develop' && '🛠️ Develop: -50 gold for resources and manpower.'}
+                  {action === 'recruit' && '⚔️ Recruit: -80 gold, -200 manpower for +500 strength.'}
+                  {(action === 'diplomacy' || action === 'war' || action === 'peace') && (
+                    <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1f2937', color: 'white', border: '1px solid #374151', borderRadius: '0.25rem', padding: '0.4rem', fontSize: '0.75rem' }}>
+                      <option value="">Select Target Dynasty</option>
+                      {others.map(f => (
+                        <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0}) [⚔️ {f.militaryStrength}]</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <button onClick={executeAction} style={{ width: '100%', padding: '0.6rem', background: '#fbbf24', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>
+                  Execute Action
+                </button>
+              </div>
+            )}
+            
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#a78bfa' }}>Stability: {player?.stability}%</span>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.5)', height: '4px', borderRadius: '9999px' }}>
+                <div style={{ background: '#a78bfa', height: '100%', borderRadius: '9999px', width: `${player?.stability}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Victory Progress */}
+          <div style={card}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fbbf24' }}>🏆 Victory Progress</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {[{ label: 'Culture 📚', val: culture, max: 2000, col: '#818cf8' }, { label: 'Prestige ⭐', val: prestige, max: 2500, col: '#fbbf24' }].map(r => (
-                <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}33`, borderRadius: '0.5rem', padding: '0.625rem' }}>
+                <div key={r.label}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                     <span style={{ fontSize: '0.75rem', color: r.col }}>{r.label}</span>
-                    <span style={{ fontSize: '0.75rem', color: `${r.col}99` }}>{r.val}/{r.max}</span>
+                    <span style={{ fontSize: '0.75rem', color: `${r.col}99` }}>{r.val} / {r.max}</span>
                   </div>
-                  <div style={{ background: 'rgba(0,0,0,0.5)', height: '6px', borderRadius: '9999px' }}>
-                    <div style={{ background: r.col, height: '100%', borderRadius: '9999px', width: `${Math.min(100, (r.val / r.max) * 100)}%`, transition: 'width 0.3s' }} />
+                  <div style={{ background: 'rgba(0,0,0,0.5)', height: '8px', borderRadius: '9999px' }}>
+                    <div style={{ background: r.col, height: '100%', borderRadius: '9999px', width: `${Math.min(100, (r.val / r.max) * 100)}%`, transition: 'width 0.5s' }} />
                   </div>
                 </div>
               ))}
             </div>
-
-            <div style={{ ...card, flex: 1 }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Royal Actions</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
-                {['develop', 'recruit', 'diplomacy', 'war', 'peace'].map(a => (
-                  <button key={a} onClick={() => setAction(a)} style={{ padding: '0.5rem', background: action === a ? '#fbbf24' : 'rgba(0,0,0,0.3)', color: action === a ? '#000' : '#fbbf24', border: '1px solid #fbbf24', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center', textTransform: 'capitalize' }}>
-                    {a}
-                  </button>
-                ))}
+            
+            <div style={{ marginTop: '1.5rem', padding: '0.75rem', border: '1px dashed rgba(217,119,6,0.2)', borderRadius: '0.5rem' }}>
+              <div style={{ fontSize: '0.7rem', color: 'rgba(254,243,199,0.6)', textAlign: 'center' }}>
+                Conquer 🏛️ <strong>{REGIONS.length}</strong> regions to achieve total <strong>Military Dominance</strong>.
               </div>
+            </div>
+          </div>
+        </div>
 
-              {action && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid rgba(217,119,6,0.3)' }}>
-                  <div style={{ fontSize: '0.8rem', marginBottom: '0.75rem', color: '#fbbf24' }}>
-                    {action === 'develop' && '🛠️ Develop: -50 gold for resources and manpower.'}
-                    {action === 'recruit' && '⚔️ Recruit: -80 gold, -200 manpower for +500 strength.'}
-                    {(action === 'diplomacy' || action === 'war' || action === 'peace') && (
-                      <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1f2937', color: 'white', border: '1px solid #374151', borderRadius: '0.25rem', padding: '0.25rem', fontSize: '0.75rem' }}>
-                        <option value="">Select Target Dynasty</option>
-                        {others.map(f => <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0}) [⚔️ {f.militaryStrength}]</option>)}
-                      </select>
-                    )}
-                  </div>
-                  <button onClick={executeAction} style={{ width: '100%', padding: '0.5rem', background: '#fbbf24', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.75rem' }}>Execute Action</button>
+        {/* Realm Management */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '1rem', marginBottom: '1rem' }}>
+          {/* Your Domain */}
+          <div style={card}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fbbf24' }}>🕌 Your Domain</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '12rem', overflowY: 'auto' }}>
+              {myRegions.map(r => (
+                <div key={r.id} style={{ padding: '0.3rem 0.6rem', border: '1px solid rgba(217,119,6,0.3)', borderRadius: '0.25rem', fontSize: '0.75rem', background: 'rgba(217,119,6,0.1)' }}>
+                  {r.name}
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Frontiers */}
+          <div style={card}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#f87171' }}>⚔️ Frontiers (Attackable)</h2>
+            <div style={{ maxHeight: '12rem', overflowY: 'auto' }}>
+              {frontiers.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {frontiers.map(r => (
+                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '0.375rem', fontSize: '0.75rem', background: 'rgba(248,113,113,0.1)' }}>
+                      <span style={{ fontWeight: 'bold' }}>{r.name}</span>
+                      <span style={{ color: '#fca5a5', fontSize: '0.7rem' }}>Occupied by {r.owner}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', color: 'rgba(254,243,199,0.4)', fontSize: '0.8rem', marginTop: '2rem' }}>No direct neighbors available for conquest.</div>
               )}
             </div>
           </div>
-          <MandalaMap factions={factions} player={player} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem', marginBottom: '1rem' }}>
