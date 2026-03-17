@@ -236,18 +236,19 @@ function MandalaOfKings() {
   const [player, setPlayer] = useState(null);
   const [culture, setCulture] = useState(10);
   const [prestige, setPrestige] = useState(20);
+  const [difficulty, setDifficulty] = useState('normal'); // 'easy', 'normal', 'difficult'
 
   // --- Auto-Save System ---
   const performSave = () => {
     if (player) {
-      const gameState = { month, year, factions, player, culture, prestige, log };
+      const gameState = { month, year, factions, player, culture, prestige, log, difficulty };
       localStorage.setItem('mandala_save', JSON.stringify(gameState));
     }
   };
 
   React.useEffect(() => {
     if (screen === 'playing') performSave();
-  }, [month, year, factions, player, culture, prestige, screen]);
+  }, [month, year, factions, player, culture, prestige, screen, difficulty]);
 
   const loadSave = () => {
     const saved = localStorage.getItem('mandala_save');
@@ -257,6 +258,7 @@ function MandalaOfKings() {
       setFactions(s.factions); setPlayer(s.player);
       setCulture(s.culture); setPrestige(s.prestige);
       setLog(s.log); setScreen('playing');
+      if (s.difficulty) setDifficulty(s.difficulty);
     }
   };
 
@@ -271,6 +273,15 @@ function MandalaOfKings() {
   const [victoryPrompt, setVictoryPrompt] = useState(false);
   const [turnSummary, setTurnSummary] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
+  const notify = (msg, type = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
+  };
 
   const addLog = (msg) => setLog(p => [msg, ...p].slice(0, 10));
 
@@ -293,6 +304,18 @@ function MandalaOfKings() {
     }
 
     const fs = selectedIndices.map((dIdx, i) => makeFaction(dIdx, i === 0));
+
+    // DIFFICULTY SCALING: Adjust starting stats
+    const pFac = fs[0];
+    if (difficulty === 'easy') {
+      pFac.gold = Math.floor(pFac.gold * 1.5);
+      pFac.food = Math.floor(pFac.food * 1.5);
+      pFac.manpower = Math.floor(pFac.manpower * 1.25);
+    } else if (difficulty === 'difficult') {
+      pFac.gold = Math.floor(pFac.gold * 0.75);
+      pFac.food = Math.floor(pFac.food * 0.75);
+      pFac.manpower = Math.floor(pFac.manpower * 0.75);
+    }
 
     // Assign Regions
     const factionMap = {};
@@ -321,17 +344,28 @@ function MandalaOfKings() {
       f.manpower = t * rnd(500, 1000);
       f.militaryStrength = t * rnd(1000, 2000);
       f.territories = t; // derived but kept for some legacy UI if needed
+      
+      // Secondary difficulty scaling for player after region calculation
+      if (f.isPlayer) {
+        if (difficulty === 'easy') { f.militaryStrength = Math.floor(f.militaryStrength * 1.2); }
+        else if (difficulty === 'difficult') { f.militaryStrength = Math.floor(f.militaryStrength * 0.8); }
+      }
     });
 
-    fs.forEach(f => fs.forEach(o => { if (f.id !== o.id) f.relations[o.id] = rnd(-50, 50); }));
+    fs.forEach(f => fs.forEach(o => { 
+      if (f.id !== o.id) {
+        f.relations[o.id] = rnd(-50, 50);
+        if (f.isPlayer && difficulty === 'easy') f.relations[o.id] += 20;
+      }
+    }));
 
     setFactions(fs);
     setPlayer(fs[0]);
     setMonth(1);
     setYear(600);
-    setCulture(10);
-    setPrestige(20);
-    setLog(['Your reign begins. May the gods favor your dynasty.']);
+    setCulture(difficulty === 'easy' ? 20 : 10);
+    setPrestige(difficulty === 'easy' ? 30 : 20);
+    setLog([`Your reign begins on ${difficulty.toUpperCase()} difficulty. May the gods favor your dynasty.`]);
     setEvent(null);
     setAction(null);
     setTargetId(null);
@@ -372,45 +406,53 @@ function MandalaOfKings() {
     let p = { ...player };
     let fs = [...factions];
     if (action === 'develop') {
-      if (p.gold < 50) { addLog('⚠️ Need 50 gold'); return; }
+      if (p.gold < 50) { notify('❌ Insufficient Treasury: Need 50 Gold to develop regions.', 'error'); return; }
       p.gold -= 50; p.food += 30; p.manpower += 100;
+      notify('📈 Development complete: Infrastructure improved across your realms!', 'success');
       addLog('📈 Realm developed: +30 food, +100 manpower');
     }
     if (action === 'recruit') {
-      if (p.gold < 80 || p.manpower < 200) { addLog('⚠️ Need 80 gold & 200 manpower'); return; }
+      if (p.gold < 80 || p.manpower < 200) { notify('❌ Insufficient Resources: Recruitment requires 80 Gold and 200 Manpower.', 'error'); return; }
       p.gold -= 80; p.manpower -= 200; p.militaryStrength += 500;
+      notify('⚔️ Levies raised: Your military strength has grown by 500!', 'success');
       addLog('⚔️ Army recruited: +500 military strength');
     }
     if (action === 'diplomacy') {
       const cost = hasTrait('diplomat') ? 24 : 30;
       const tgt = fs.find(f => f.id === targetId);
-      if (!tgt || p.gold < cost) { addLog(`⚠️ Need ${cost} gold & a target`); return; }
+      if (!tgt) { notify('❌ Diplomatic Mission: You must select a target dynasty first.', 'error'); return; }
+      if (p.gold < cost) { notify(`❌ Insufficient Treasury: Need ${cost} Gold for diplomatic envoys.`, 'error'); return; }
       p.gold -= cost;
       p.relations[tgt.id] = Math.min(100, (p.relations[tgt.id] || 0) + 20);
       tgt.relations[p.id] = p.relations[tgt.id];
+      notify(`🤝 Success: Relations with the ${tgt.name} Dynasty have been improved.`, 'success');
       addLog(`🤝 Relations improved with ${tgt.name}`);
     }
     if (action === 'war') {
       const tgt = fs.find(f => f.id === targetId);
-      if (!tgt || p.atWar.includes(tgt.id)) { addLog('⚠️ Pick a valid target'); return; }
+      if (!tgt) { notify('❌ War Council: You must select a target dynasty to declare war.', 'error'); return; }
+      if (p.atWar.includes(tgt.id)) { notify('❌ Already at War: Your armies are already engaged with this faction.', 'error'); return; }
 
       const isNeighbor = p.regionIds.some(rid => {
         const reg = REGIONS.find(r => r.id === rid);
         return reg.neighbors.some(nb => tgt.regionIds.includes(nb));
       });
 
-      if (!isNeighbor) { addLog('⚠️ Choose a neighbor to declare war!'); return; }
+      if (!isNeighbor) { notify('❌ Distance Error: You can only declare war on direct neighbors.', 'error'); return; }
 
       p.atWar = [...p.atWar, tgt.id]; tgt.atWar = [...tgt.atWar, p.id];
+      notify(`⚔️ Sound the Drums: War has been declared upon the ${tgt.name} Dynasty!`, 'warning');
       addLog(`⚔️ War declared on ${tgt.name}!`);
     }
     if (action === 'peace') {
       const tgt = fs.find(f => f.id === targetId);
-      if (!tgt || !p.atWar.includes(tgt.id)) { addLog('⚠️ Not at war with that faction'); return; }
-      if (p.gold < 50) { addLog('⚠️ Need 50 gold'); return; }
+      if (!tgt) { notify('❌ Peace Negotiations: Select a faction to offer terms.', 'error'); return; }
+      if (!p.atWar.includes(tgt.id)) { notify('❌ No Conflict: You are not currently at war with this faction.', 'error'); return; }
+      if (p.gold < 50) { notify('❌ Insufficient Treasury: Need 50 Gold for peace tribute.', 'error'); return; }
       p.gold -= 50;
       p.atWar = p.atWar.filter(id => id !== tgt.id);
       tgt.atWar = tgt.atWar.filter(id => id !== p.id);
+      notify(`✌️ Peace Restored: A treaty has been signed with the ${tgt.name} Dynasty.`, 'success');
       addLog(`✌️ Peace made with ${tgt.name}`);
     }
     setPlayer(p); setFactions(fs.map(f => f.id === 0 ? p : f));
@@ -440,6 +482,10 @@ function MandalaOfKings() {
     if (hasTrait('patron')) { setCulture(v => v + 2); localAddLog('📜 Vidyāvinodī: +2 Culture'); }
     if (hasTrait('pious')) p.stability = Math.min(100, p.stability + 2);
 
+    // DIFFICULTY INCOME SCALING
+    if (difficulty === 'easy') { goldIncome = Math.floor(goldIncome * 1.2); foodIncome = Math.floor(foodIncome * 1.2); }
+    else if (difficulty === 'difficult') { goldIncome = Math.floor(goldIncome * 0.85); foodIncome = Math.floor(foodIncome * 0.85); }
+
     p.gold += goldIncome;
     p.food += foodIncome;
     p.manpower += manpowerGrowth;
@@ -453,6 +499,10 @@ function MandalaOfKings() {
       if (hasTrait('strategist')) pMod += 0.15;
       if (hasTrait('ruthless')) pMod += 0.2;
       if (hasTrait('cunning')) pMod += 0.05;
+
+      // DIFFICULTY BATTLE MODIFIER
+      if (difficulty === 'easy') pMod += 0.1;
+      else if (difficulty === 'difficult') pMod -= 0.1;
 
       const pp = p.militaryStrength * pMod;
       const ep = f.militaryStrength * (1 + Math.random() * 0.5);
@@ -516,167 +566,376 @@ function MandalaOfKings() {
     }
     if (p.regionIds.length <= 0) { setScreen('ended'); return; }
     if (ny >= 1000) { setScreen('ended'); return; }
-    if (Math.random() < 0.7) setEvent(pick(EVENTS));
+    
+    // DIFFICULTY EVENT PROBABILITY
+    const eventChance = difficulty === 'difficult' ? 0.85 : (difficulty === 'easy' ? 0.6 : 0.7);
+    if (Math.random() < eventChance) setEvent(pick(EVENTS));
   };
 
   /* ─── MENU ─────────────────────────────────────────────────────────── */
-  if (screen === 'menu') return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#78350f,#7f1d1d,#581c87)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: '38rem', width: '100%', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '3.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', background: 'linear-gradient(to right,#fef3c7,#fbbf24,#fef3c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>
-          Mandala of Kings
-        </h1>
-        <p style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>भारतवर्ष • Bhāratavarṣa</p>
-        <p style={{ color: '#fbbf24', marginBottom: '2.5rem' }}>600–1000 CE</p>
-        <div style={{ background: 'rgba(0,0,0,0.35)', border: '2px solid rgba(217,119,6,0.4)', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '2rem' }}>
-          <p style={{ lineHeight: '1.7', marginBottom: '1.25rem' }}>Command a dynasty in medieval India. Navigate war, diplomacy, and patronage — and build a legacy that outlasts the ages.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem', color: 'rgba(254,243,199,0.85)' }}>
-            {[['👑', 'Rule through generations'], ['⚔️', 'Wage war and forge alliances'], ['💰', 'Manage gold, food & manpower'], ['📜', 'Navigate crises and events']].map(([icon, text]) => (
-              <div key={text} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}><span>{icon}</span><span>{text}</span></div>
-            ))}
+  if (screen === 'menu') {
+    const bg = 'radial-gradient(circle at center, #581c87 0%, #1e1b4b 100%)';
+    return (
+      <div style={{ minHeight: '100vh', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '42rem', width: '100%', textAlign: 'center' }}>
+          <div style={{ marginBottom: '2.5rem' }}>
+            <h1 style={{ fontSize: '4.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', background: 'linear-gradient(to right, #fef3c7, #fbbf24, #fef3c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 15px rgba(217,119,6,0.3))' }}>
+              Mandala of Kings
+            </h1>
+            <p style={{ fontSize: '1.5rem', letterSpacing: '0.3em', opacity: 0.9, color: '#fbbf24', fontWeight: '500' }}>भारतवर्ष • BHĀRATAVARṢA</p>
+            <p style={{ color: 'rgba(254,243,199,0.6)', marginTop: '0.5rem', fontSize: '1.1rem', letterSpacing: '0.1em' }}>600 – 1000 CE</p>
+          </div>
+
+          <div style={{ 
+            background: 'rgba(0,0,0,0.4)', 
+            backdropFilter: 'blur(16px)', 
+            border: '1px solid rgba(217,119,6,0.3)', 
+            borderRadius: '1.5rem', 
+            padding: '2.5rem', 
+            marginBottom: '3rem',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '2px', background: 'linear-gradient(to right, transparent, #fbbf24, transparent)' }} />
+            <p style={{ fontSize: '1.15rem', lineHeight: '1.8', marginBottom: '2rem', color: '#fef3c7' }}>
+              Assume the mantle of a medieval Indian sovereign. Navigate the shifting tides of war, weave intricate diplomatic webs, and foster a cultural renaissance to establish a legacy that echoes through eternity.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', textAlign: 'left' }}>
+              {[
+                ['👑', 'Universal Sovereignty', 'Command dynasties across generations.'],
+                ['⚔️', 'Grand Strategy', 'Forge alliances or conquer the Mandala.'],
+                ['💰', 'Statecraft', 'Balance resources and public stability.'],
+                ['📜', 'Royal Chronicles', 'Shape history through dynamic events.']
+              ].map(([icon, title, desc]) => (
+                <div key={title} style={{ display: 'flex', gap: '1rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 'bold', color: '#fbbf24', fontSize: '0.9rem' }}>{title}</div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+            {/* Difficulty Selector */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.3)', padding: '0.4rem', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.3)', backdropFilter: 'blur(8px)' }}>
+              {[
+                { id: 'easy', label: 'Bhūpati', desc: 'Easy' },
+                { id: 'normal', label: 'Rāja', desc: 'Normal' },
+                { id: 'difficult', label: 'Mahārāja', desc: 'Hard' }
+              ].map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => setDifficulty(d.id)}
+                  style={{
+                    padding: '0.5rem 1.25rem',
+                    borderRadius: '0.75rem',
+                    border: 'none',
+                    background: difficulty === d.id ? 'linear-gradient(135deg, #d97706, #fbbf24)' : 'transparent',
+                    color: difficulty === d.id ? '#451a03' : '#fbbf24',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    minWidth: '80px'
+                  }}
+                >
+                  <span style={{ fontSize: '0.9rem' }}>{d.label}</span>
+                  <span style={{ fontSize: '0.55rem', opacity: 0.8 }}>{d.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {localStorage.getItem('mandala_save') && (
+              <button onClick={loadSave} style={{ 
+                padding: '1.1rem 2.8rem', 
+                fontSize: '1.1rem', 
+                fontWeight: 'bold', 
+                background: 'linear-gradient(135deg, #059669, #10b981)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '0.8rem', 
+                cursor: 'pointer', 
+                boxShadow: '0 10px 20px rgba(16,185,129,0.3)',
+                transition: 'all 0.2s',
+                letterSpacing: '0.05em'
+              }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                CONTINUE REIGN
+              </button>
+            )}
+            <button onClick={() => startGame()} style={{ 
+              padding: '1.1rem 2.8rem', 
+              fontSize: '1.1rem', 
+              fontWeight: 'bold', 
+              background: 'linear-gradient(135deg, #7c4dff, #9333ea)', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '0.8rem', 
+              cursor: 'pointer', 
+              boxShadow: '0 10px 20px rgba(124,77,255,0.3)',
+              transition: 'all 0.2s',
+              letterSpacing: '0.05em'
+            }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+              QUICK PLAY
+            </button>
+            <button onClick={() => setScreen('selection')} style={{ 
+              padding: '1.1rem 2.8rem', 
+              fontSize: '1.1rem', 
+              fontWeight: 'bold', 
+              background: 'linear-gradient(135deg, #d97706, #fbbf24)', 
+              color: '#451a03', 
+              border: 'none', 
+              borderRadius: '0.8rem', 
+              cursor: 'pointer', 
+              boxShadow: '0 10px 20px rgba(217,119,6,0.3)',
+              transition: 'all 0.2s',
+              letterSpacing: '0.05em'
+            }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+              FOUND DYNASTY
+            </button>
+            <button onClick={() => setScreen('howtoplay')} style={{ 
+              padding: '1.1rem 2rem', 
+              fontSize: '1.1rem', 
+              fontWeight: 'bold', 
+              background: 'rgba(255,255,255,0.05)', 
+              color: '#fbbf24', 
+              border: '1px solid rgba(217,119,6,0.5)', 
+              borderRadius: '0.8rem', 
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>
+              THE ART OF RULE
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {localStorage.getItem('mandala_save') && (
-            <button onClick={loadSave} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#059669,#10b981)', color: 'white', border: '2px solid #34d399', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
-              Continue Reign
-            </button>
-          )}
-          <button onClick={() => startGame()} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: '2px solid #fbbf24', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
-            Quick Play
-          </button>
-          <button onClick={() => setScreen('selection')} style={{ padding: '0.875rem 2.5rem', fontSize: '1.125rem', fontWeight: 'bold', background: 'linear-gradient(to right,#7c3aed,#9333ea)', color: 'white', border: '2px solid #c084fc', borderRadius: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
-            Choose Your Dynasty
-          </button>
-          <button onClick={() => setScreen('howtoplay')} style={{ padding: '0.875rem 1.5rem', fontWeight: 'bold', background: 'rgba(0,0,0,0.4)', color: '#fbbf24', border: '2px solid rgba(217,119,6,0.5)', borderRadius: '0.5rem', cursor: 'pointer' }}>
-            How to Play
-          </button>
-        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   /* ─── SELECTION ────────────────────────────────────────────────────── */
-  if (screen === 'selection') return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e1b4b,#312e81,#1e1b4b)', padding: '2rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: '64rem', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', textAlign: 'center', marginBottom: '0.5rem' }}>Select Your Dynasty</h1>
-        <p style={{ textAlign: 'center', color: '#fbbf24', marginBottom: '2.5rem' }}>Forge your path in Bhāratavarṣa</p>
+  if (screen === 'selection') {
+    const bg = 'radial-gradient(circle at center, #1e1b4b 0%, #0c0a09 100%)';
+    return (
+      <div style={{ minHeight: '100vh', background: bg, padding: '4rem 2rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '72rem', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+            <h1 style={{ fontSize: '3rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', marginBottom: '1rem', color: '#fbbf24' }}>Select Your Sacred Lineage</h1>
+            <p style={{ fontSize: '1.2rem', color: 'rgba(254,243,199,0.7)', fontStyle: 'italic', marginBottom: '2rem' }}>Which dynasty shall carry your name into the annals of Bhāratavarṣa?</p>
+            
+            {/* Difficulty Selector */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.3)', padding: '0.4rem', borderRadius: '1rem', border: '1px solid rgba(217,119,6,0.3)', backdropFilter: 'blur(8px)' }}>
+              {[
+                { id: 'easy', label: 'Bhūpati', desc: 'Easy' },
+                { id: 'normal', label: 'Rāja', desc: 'Normal' },
+                { id: 'difficult', label: 'Mahārāja', desc: 'Hard' }
+              ].map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => setDifficulty(d.id)}
+                  style={{
+                    padding: '0.6rem 1.5rem',
+                    borderRadius: '0.75rem',
+                    border: 'none',
+                    background: difficulty === d.id ? 'linear-gradient(135deg, #d97706, #fbbf24)' : 'transparent',
+                    color: difficulty === d.id ? '#451a03' : '#fbbf24',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
+                >
+                  <span style={{ fontSize: '1rem' }}>{d.label}</span>
+                  <span style={{ fontSize: '0.6rem', opacity: 0.8 }}>{d.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-          {DYNASTY_NAMES.map((name, idx) => {
-            const data = DYNASTY_DATA[name];
-            return (
-              <div key={name}
-                onClick={() => startGame(idx)}
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '2px solid rgba(217,119,6,0.3)',
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  hover: { transform: 'translateY(-4px)', borderColor: '#fbbf24' }
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#fbbf24'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.3)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-              >
-                <h3 style={{ fontSize: '1.5rem', color: '#fbbf24', marginBottom: '0.75rem', fontFamily: 'Georgia,serif' }}>{name}</h3>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(254,243,199,0.7)', marginBottom: '1rem' }}>
-                  Notable Rulers: {data.male.slice(0, 3).join(', ')}...
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
+            {DYNASTY_NAMES.map((name, idx) => {
+              const data = DYNASTY_DATA[name];
+              return (
+                <div key={name}
+                  onClick={() => startGame(idx)}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(217,119,6,0.2)',
+                    borderRadius: '1.25rem',
+                    padding: '2rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseEnter={(e) => { 
+                    e.currentTarget.style.transform = 'translateY(-8px)'; 
+                    e.currentTarget.style.borderColor = '#fbbf24'; 
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.4), 0 0 20px rgba(217,119,6,0.1)';
+                  }}
+                  onMouseLeave={(e) => { 
+                    e.currentTarget.style.transform = 'translateY(0)'; 
+                    e.currentTarget.style.borderColor = 'rgba(217,119,6,0.2)'; 
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '1rem', fontSize: '2rem', opacity: 0.1 }}>🔱</div>
+                  <h3 style={{ fontSize: '1.75rem', color: '#fbbf24', marginBottom: '1rem', fontFamily: 'Georgia,serif' }}>{name}</h3>
+                  <div style={{ fontSize: '0.95rem', color: 'rgba(254,243,199,0.7)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                    <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Notable Rulers</span><br />
+                    {data.male.slice(0, 3).join(', ')}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <span style={{ background: 'rgba(217,119,6,0.1)', color: '#fbbf24', padding: '0.3rem 0.75rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.05em', border: '1px solid rgba(217,119,6,0.2)' }}>HISTORICAL</span>
+                    <span style={{ background: 'rgba(124,58,237,0.1)', color: '#c084fc', padding: '0.3rem 0.75rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.05em', border: '1px solid rgba(124,58,237,0.2)' }}>MAJOR CLAN</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
-                  <span style={{ background: 'rgba(217,119,6,0.2)', color: '#fbbf24', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>Historical</span>
-                  <span style={{ background: 'rgba(124,58,237,0.2)', color: '#c084fc', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>Major Power</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div style={{ textAlign: 'center' }}>
-          <button onClick={() => setScreen('menu')} style={{ background: 'none', border: 'none', color: '#fbbf24', textDecoration: 'underline', cursor: 'pointer' }}>
-            Back to Main Menu
-          </button>
+          <div style={{ textAlign: 'center' }}>
+            <button onClick={() => setScreen('menu')} style={{ background: 'transparent', border: 'none', color: '#fbbf24', textDecoration: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: '600', transition: 'opacity 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.opacity = 0.8} onMouseLeave={(e) => e.currentTarget.style.opacity = 1}>
+              ← Return to Imperial Court
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   /* ─── HOW TO PLAY ───────────────────────────────────────────────────── */
   if (screen === 'howtoplay') {
-    const S = ({ title, children }) => (
-      <div style={{ background: 'rgba(0,0,0,0.4)', border: '2px solid rgba(217,119,6,0.4)', borderRadius: '0.75rem', padding: '1.25rem' }}>
-        <h2 style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.125rem', marginBottom: '0.75rem' }}>{title}</h2>
+    const sectionStyle = {
+      background: 'rgba(0,0,0,0.4)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(217,119,6,0.3)',
+      borderRadius: '1rem',
+      padding: '1.5rem',
+      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.8)',
+      transition: 'transform 0.3s ease, border-color 0.3s ease'
+    };
+
+    const S = ({ title, icon, children }) => (
+      <div style={sectionStyle} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.6)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(217,119,6,0.3)'; }}>
+        <h2 style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontFamily: 'Georgia,serif' }}>
+          <span style={{ fontSize: '1.5rem' }}>{icon}</span> {title}
+        </h2>
         {children}
       </div>
     );
+
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#78350f,#7f1d1d,#581c87)', padding: '2rem', color: '#fef3c7', fontFamily: 'sans-serif', overflowY: 'auto' }}>
-        <div style={{ maxWidth: '42rem', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', marginBottom: '0.25rem' }}>How to Play</h1>
-          <p style={{ color: '#fbbf24', marginBottom: '1.5rem' }}>Master medieval Indian statecraft</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <S title="🎯 Objective">
-              <p style={{ lineHeight: '1.7' }}>Build the greatest dynasty before 1000 CE. Your <strong>Legacy Score</strong> = territories×100 + gold×0.5 + culture×10 + prestige×5 + years×2. Game ends when you lose all territories or reach year 1000.</p>
+      <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at center, #581c87 0%, #1e1b4b 100%)', padding: '3rem 1rem', color: '#fef3c7', fontFamily: 'sans-serif', overflowY: 'auto' }}>
+        <div style={{ maxWidth: '48rem', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h1 style={{ fontSize: '3.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', background: 'linear-gradient(to right, #fef3c7, #fbbf24, #fef3c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '1rem' }}>Arthashastra</h1>
+            <p style={{ color: '#d97706', fontSize: '1.2rem', letterSpacing: '0.1em', fontWeight: '600' }}>THE ART OF RULING • राजधर्म</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <S title="Objective" icon="🎯">
+              <p style={{ lineHeight: '1.8', color: 'rgba(254,243,199,0.9)', fontSize: '1.05rem' }}>
+                Forge a legacy that echoes through the centuries. Lead your dynasty of Bhāratavarṣa to supremacy before the year <strong>1000 CE</strong>.
+              </p>
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(217,119,6,0.1)', borderRadius: '0.5rem', borderLeft: '4px solid #d97706' }}>
+                <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Legacy Score:</span> 🏰 Territories × 100 + 💰 Gold × 0.5 + 📜 Culture × 10 + ⭐ Prestige × 5 + ⏳ Years × 2
+              </div>
             </S>
-            <S title="🔄 Each Turn">
-              {['Review resources, territories & military strength.', 'Execute one Royal Action.', 'Resolve any Event that appears.', 'Click End Turn — wars auto-resolve, income arrives.'].map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <div style={{ background: '#d97706', color: 'white', borderRadius: '50%', width: '1.5rem', height: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.75rem', flexShrink: 0 }}>{i + 1}</div>
-                  <span>{s}</span>
-                </div>
-              ))}
-            </S>
-            <S title="💰 Resources">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
-                {[['Gold 🟡', 'Treasury. ~+20/territory/month.'], ['Food 🌾', '+15/territory/month. Consumed by manpower.'], ['Manpower 👥', 'Grows with stability. Needed to recruit armies.'], ['Stability 🛡️', '0–100%. Higher = more manpower growth.'], ['Culture 📚', 'Earned via events. Victory at 2000.'], ['Prestige ⭐', 'Earned via battles & events. Victory at 2500.']].map(([l, d]) => (
-                  <div key={l} style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '0.375rem' }}>
-                    <div style={{ fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.25rem' }}>{l}</div>
-                    <div style={{ color: 'rgba(254,243,199,0.8)' }}>{d}</div>
+
+            <S title="The Cycle of Power" icon="🔄">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  'Assess your Mandala — review your resources, territories, and rival strengths.',
+                  'Command your court — execute one Royal Action to expand your influence.',
+                  'Navigate Fate — resolve dynamic events that test your wisdom as a ruler.',
+                  'Seal the turn — income arrives, populations grow, and border wars resolve.'
+                ].map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #d97706, #78350f)', color: 'white', borderRadius: '50%', width: '2rem', height: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', flexShrink: 0 }}>{i + 1}</div>
+                    <span style={{ color: 'rgba(254,243,199,0.9)', fontSize: '1.05rem' }}>{s}</span>
                   </div>
                 ))}
               </div>
             </S>
-            <S title="⚙️ Royal Actions">
-              {[['Develop Realm', '-50 gold → +30 food, +100 manpower'], ['Recruit Army', '-80 gold, -200 manpower → +500 military'], ['Improve Relations', '-30 gold → +20 relations with target'], ['Declare War', 'Begin conquest (select target)'], ['Sue for Peace', '-50 gold → end active war (select target)']].map(([n, d]) => (
-                <div key={n} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
-                  <strong style={{ color: '#fbbf24', minWidth: '10rem' }}>{n}:</strong>
-                  <span style={{ color: 'rgba(254,243,199,0.8)' }}>{d}</span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+              <S title="State Treasury" icon="💎">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  {[
+                    ['Gold 💰', 'Treasury funds for actions. Earned through taxes.'],
+                    ['Food 🌾', 'Required to maintain your armies and satisfy the masses.'],
+                    ['Manpower 👥', 'Your military pool. Grows when stability is high.'],
+                    ['Stability 🛡️', 'The heart of your realm. Low stability triggers crises.'],
+                    ['Culture 📜', 'Your dynastic footprint. Victory at 2000.'],
+                    ['Prestige ⭐', 'Your honor among kings. Victory at 1500.']
+                  ].map(([l, d]) => (
+                    <div key={l} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(254,243,199,0.1)' }}>
+                      <div style={{ fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.25rem', fontSize: '0.9rem' }}>{l}</div>
+                      <div style={{ color: 'rgba(254,243,199,0.7)', fontSize: '0.8rem', lineHeight: '1.4' }}>{d}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </S>
-            <S title="⚔️ Warfare">
-              <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Wars resolve each turn. Strength is compared with random variance.</p>
-              <div style={{ background: 'rgba(127,29,29,0.3)', padding: '0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem' }}>
-                <div>Your power &gt;30% higher → <strong>Win</strong> 1–2 territories</div>
-                <div>Roughly equal → <strong>Stalemate</strong>, both weaken</div>
-                <div>Enemy &gt;30% higher → <strong>Lose</strong> 1–2 territories</div>
-              </div>
-            </S>
-            <S title="🏆 Victory Conditions">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
-                {[['👑 Conquest', 'Defeat all rivals'], ['📚 Cultural', 'Reach 2000 culture'], ['⭐ Prestige', 'Reach 2500 prestige']].map(([t, d]) => (
-                  <div key={t} style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '0.375rem' }}>
-                    <div style={{ fontWeight: 'bold', color: '#fbbf24' }}>{t}</div>
-                    <div style={{ color: 'rgba(254,243,199,0.8)' }}>{d}</div>
+              </S>
+
+              <S title="Warfare & Conquest" icon="⚔️">
+                <p style={{ marginBottom: '1rem', fontSize: '0.95rem', color: 'rgba(254,243,199,0.8)' }}>Military strength decides the borders of the Mandala. Strength is compared with strategic variance each turn.</p>
+                <div style={{ background: 'linear-gradient(to bottom, rgba(127,29,29,0.4), rgba(69,10,10,0.4))', padding: '1rem', borderRadius: '0.75rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <div style={{ fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ color: '#fca5a5' }}>Superiority (&gt;30%)</span>
+                    <span style={{ fontWeight: 'bold' }}>Victory</span>
+                  </div>
+                  <div style={{ fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ color: '#94a3b8' }}>Parity</span>
+                    <span style={{ fontWeight: 'bold' }}>Stalemate</span>
+                  </div>
+                  <div style={{ fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#f87171' }}>Inferiority (&lt;-30%)</span>
+                    <span style={{ fontWeight: 'bold' }}>Defeat</span>
+                  </div>
+                </div>
+              </S>
+            </div>
+
+            <S title="Victory Paths" icon="🏆">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                {[
+                  { t: 'The Conqueror', s: 'Military Dominance', d: 'Annihilate every rival dynasty in Bhāratavarṣa.', c: '#ef4444' },
+                  { t: 'The Enlightened', s: 'Cultural Apex', d: 'Ascend to 2000 Culture through patronage.', c: '#818cf8' },
+                  { t: 'The Chakravartin', s: 'Legendary Prestige', d: 'Amass 2500 Prestige through glorious acts.', c: '#fbbf24' }
+                ].map(v => (
+                  <div key={v.t} style={{ padding: '1rem', border: `1px solid ${v.c}44`, borderRadius: '0.75rem', background: `${v.c}11` }}>
+                    <div style={{ color: v.c, fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.25rem' }}>{v.t}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#fef3c7', opacity: 0.8, marginBottom: '0.5rem' }}>{v.s}</div>
+                    <div style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{v.d}</div>
                   </div>
                 ))}
               </div>
-              <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'rgba(254,243,199,0.6)' }}>When a condition triggers you can Claim Victory or Continue Playing for a higher score.</p>
             </S>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem', paddingBottom: '2rem' }}>
-            <button onClick={() => setScreen('menu')} style={{ padding: '0.75rem 1.5rem', fontWeight: 'bold', background: 'rgba(0,0,0,0.4)', color: '#fbbf24', border: '2px solid rgba(217,119,6,0.5)', borderRadius: '0.5rem', cursor: 'pointer' }}>← Menu</button>
+
+          <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginTop: '4rem', paddingBottom: '4rem' }}>
+            <button onClick={() => setScreen('menu')} style={{ padding: '1rem 2rem', fontWeight: 'bold', background: 'rgba(255,255,255,0.05)', color: '#fbbf24', border: '2px solid rgba(217,119,6,0.5)', borderRadius: '0.75rem', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>← Court Menu</button>
             {savedState ? (
               <button onClick={() => {
                 setMonth(savedState.month); setYear(savedState.year);
                 setFactions(savedState.factions); setPlayer(savedState.player);
                 setCulture(savedState.culture); setPrestige(savedState.prestige);
                 setLog(savedState.log); setScreen('playing');
-              }} style={{ padding: '0.75rem 1.5rem', fontWeight: 'bold', background: 'linear-gradient(to right,#16a34a,#22c55e)', color: 'white', border: '2px solid #4ade80', borderRadius: '0.5rem', cursor: 'pointer' }}>← Return to Game</button>
+              }} style={{ padding: '1rem 2.5rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', borderRadius: '0.75rem', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>Return to Command</button>
             ) : (
-              <button onClick={startGame} style={{ padding: '0.75rem 1.5rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: '2px solid #fbbf24', borderRadius: '0.5rem', cursor: 'pointer' }}>Start Playing →</button>
+              <button onClick={() => startGame()} style={{ padding: '1rem 2.5rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #d97706, #fbbf24)', color: '#451a03', border: 'none', borderRadius: '0.75rem', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 15px rgba(217, 119, 6, 0.4)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>Found Your Dynasty →</button>
             )}
           </div>
         </div>
@@ -687,6 +946,7 @@ function MandalaOfKings() {
   /* ─── END SCREENS ───────────────────────────────────────────────────── */
   if (screen === 'victory' || screen === 'ended') {
     const score = calcLegacy(player, culture, prestige, year - 600);
+    const bg = 'radial-gradient(circle at center, #581c87 0%, #1e1b4b 100%)';
     const TITLES = {
       military: { t: 'Military Dominance', s: 'Chakravartin — Universal Ruler' },
       conquest: { t: 'Total Conquest', s: 'Samrāṭ — Emperor of All' },
@@ -695,27 +955,56 @@ function MandalaOfKings() {
     };
     const vt = victoryType ? TITLES[victoryType] : null;
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#78350f,#7f1d1d,#581c87)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
-        <div style={{ maxWidth: '36rem', width: '100%', textAlign: 'center' }}>
-          <div style={{ fontSize: '5rem', marginBottom: '0.5rem' }}>{screen === 'victory' ? '🏆' : '📜'}</div>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', marginBottom: '0.5rem' }}>
+      <div style={{ minHeight: '100vh', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2.5rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '40rem', width: '100%', textAlign: 'center' }}>
+          <div style={{ fontSize: '6rem', marginBottom: '1.5rem', filter: 'drop-shadow(0 0 20px rgba(217,119,6,0.4))' }}>{screen === 'victory' ? '🏆' : '📜'}</div>
+          <h1 style={{ fontSize: '3.5rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', marginBottom: '0.5rem', background: 'linear-gradient(to right, #fef3c7, #fbbf24, #fef3c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             {screen === 'victory' ? vt?.t : "Dynasty's End"}
           </h1>
-          {vt && <p style={{ color: '#fbbf24', fontSize: '1.25rem', fontStyle: 'italic', marginBottom: '1rem' }}>{vt.s}</p>}
-          <div style={{ background: 'rgba(0,0,0,0.4)', border: '2px solid rgba(217,119,6,0.4)', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ color: '#fbbf24', marginBottom: '0.25rem' }}>Legacy Score</div>
-            <div style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '1.25rem' }}>{score}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              {[['Territories', player?.regionIds.length || 0], ['Years Ruled', year - 600], ['Culture', culture], ['Prestige', prestige]].map(([l, v]) => (
-                <div key={l} style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '0.375rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#fbbf24' }}>{l}</div>
-                  <div style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>{v}</div>
+          {vt && <p style={{ color: '#fbbf24', fontSize: '1.5rem', fontStyle: 'italic', marginBottom: '2.5rem', opacity: 0.9 }}>{vt.s}</p>}
+          
+          <div style={{ 
+            background: 'rgba(0,0,0,0.4)', 
+            backdropFilter: 'blur(16px)', 
+            border: '2px solid rgba(217,119,6,0.3)', 
+            borderRadius: '1.5rem', 
+            padding: '2.5rem', 
+            marginBottom: '3rem',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.6)'
+          }}>
+            <div style={{ color: '#fbbf24', fontSize: '0.9rem', letterSpacing: '0.2em', fontWeight: 'bold', marginBottom: '0.5rem' }}>FINAL LEGACY</div>
+            <div style={{ fontSize: '5rem', fontWeight: 'bold', marginBottom: '2rem', lineHeight: '1' }}>{score.toLocaleString()}</div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {[
+                ['Territories', player?.regionIds.length || 0, '🏛️'],
+                ['Years Ruled', year - 600, '📅'],
+                ['Culture', culture, '📚'],
+                ['Prestige', prestige, '⭐']
+              ].map(([l, v, i]) => (
+                <div key={l} style={{ background: 'rgba(255,255,255,0.03)', padding: '1.25rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{i}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(254,243,199,0.5)', fontWeight: 'bold', letterSpacing: '0.05em' }}>{String(l).toUpperCase()}</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fff' }}>{v}</div>
                 </div>
               ))}
             </div>
           </div>
-          <button onClick={() => setScreen('menu')} style={{ padding: '0.75rem 2rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem' }}>
-            New Dynasty
+          
+          <button onClick={() => setScreen('menu')} style={{ 
+            padding: '1.25rem 3.5rem', 
+            fontWeight: 'bold', 
+            background: 'linear-gradient(135deg, #d97706, #fbbf24)', 
+            color: '#451a03', 
+            border: 'none', 
+            borderRadius: '1rem', 
+            cursor: 'pointer', 
+            fontSize: '1.1rem',
+            boxShadow: '0 10px 30px rgba(217,119,6,0.3)',
+            transition: 'transform 0.2s',
+            letterSpacing: '0.05em'
+          }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+             ESTABLISH NEW LINEAGE
           </button>
         </div>
       </div>
@@ -726,8 +1015,15 @@ function MandalaOfKings() {
   if (screen === 'playing') {
     const others = factions.filter(f => !f.isPlayer && f.regionIds.length > 0);
     const score = calcLegacy(player, culture, prestige, year - 600);
-    const bg = 'linear-gradient(135deg,#451a03,#450a0a,#3b0764)';
-    const card = { background: 'rgba(0,0,0,0.45)', border: '2px solid rgba(217,119,6,0.4)', borderRadius: '0.75rem', padding: '1rem' };
+    const bg = 'radial-gradient(circle at center, #581c87 0%, #1e1b4b 100%)';
+    const cardStyle = {
+      background: 'rgba(0,0,0,0.4)',
+      backdropFilter: 'blur(12px)',
+      border: '1px solid rgba(217,119,6,0.3)',
+      borderRadius: '1rem',
+      padding: '1.25rem',
+      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.5)'
+    };
 
     // Calculate borders for text-based display
     const myRegions = REGIONS.filter(r => player?.regionIds?.includes(r.id));
@@ -737,321 +1033,377 @@ function MandalaOfKings() {
     );
 
     return (
-      <div style={{ minHeight: '100vh', background: bg, padding: '1rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ minHeight: '100vh', background: bg, padding: '1.5rem', color: '#fef3c7', fontFamily: 'sans-serif', position: 'relative' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
-          {/* Header */}
-          <div style={{ ...card, background: 'rgba(120,53,15,0.4)', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-              <div>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', fontFamily: 'Georgia,serif' }}>{player?.name} Dynasty</h1>
-                <div style={{ display: 'flex', gap: '1rem', color: '#fbbf24', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                  <span>👑 {player?.ruler.name}</span>
-                  <span>📅 {month}/{year} CE</span>
-                  <span>🏛️ {player?.regionIds.length} regions</span>
+          {/* Header Dashboard */}
+          <div style={{ ...cardStyle, background: 'rgba(88,28,135,0.2)', borderColor: 'rgba(217,119,6,0.5)', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(to right, #d97706, #fbbf24, #d97706)' }} />
+            <div>
+              <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', background: 'linear-gradient(to right, #fef3c7, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{player?.name} Dynasty</h1>
+              <div style={{ display: 'flex', gap: '1.5rem', color: '#fbbf24', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: '600', letterSpacing: '0.05em' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ opacity: 0.8 }}>👑</span> {player?.ruler.name}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ opacity: 0.8 }}>📅</span> {month}/{year} CE</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><span style={{ opacity: 0.8 }}>🏛️</span> {player?.regionIds.length} Realms</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#fbbf24', letterSpacing: '0.1em', fontWeight: 'bold' }}>LEGACY SCORE</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>{score}</div>
                 </div>
+                <button onClick={() => setShowExitConfirm(true)} style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '0.5rem', color: '#fca5a5', fontSize: '0.75rem', padding: '0.5rem 1rem', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.4)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}>EXIT</button>
               </div>
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <button onClick={() => setShowExitConfirm(true)} style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '0.25rem', color: '#fca5a5', fontSize: '0.65rem', padding: '0.2rem 0.5rem', cursor: 'pointer' }}>
-                  Exit Game
-                </button>
-                <div style={{ fontSize: '0.7rem', color: '#fbbf24', marginTop: '1.5rem' }}>LEGACY</div>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score}</div>
-                <button onClick={() => setShowHelp(h => !h)} style={{ marginTop: '0.25rem', padding: '0.2rem 0.5rem', background: 'rgba(88,28,135,0.5)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: '0.25rem', color: '#d8b4fe', fontSize: '0.7rem', cursor: 'pointer' }}>
-                  {showHelp ? 'Hide Help' : '? Help'}
-                </button>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {player?.ruler.traits.map((t, i) => (
-                <span key={i} title={t.desc} style={{ padding: '0.15rem 0.5rem', background: 'rgba(88,28,135,0.5)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '9999px', fontSize: '0.7rem', color: '#e9d5ff', cursor: 'help' }}>
-                  {t.name}
-                </span>
-              ))}
             </div>
           </div>
 
-          {/* Quick Help */}
-          {showHelp && (
-            <div style={{ ...card, background: 'rgba(88,28,135,0.25)', border: '2px solid rgba(168,85,247,0.4)', marginBottom: '1rem', fontSize: '0.8rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', color: 'rgba(233,213,255,0.85)' }}>
-                <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Actions</div>Develop: 50g → food+man<br />Recruit: 80g+200men → +500mil<br />Diplomacy: 30g → +20 rel<br />War: free (pick target)</div>
-                <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Income/Turn</div>Gold: ~20 × territories<br />Food: ~15 × territories<br />Manpower: stability-based</div>
-                <div><div style={{ color: '#d8b4fe', fontWeight: 'bold', marginBottom: '0.25rem' }}>Victory</div>👑 Defeat all rivals<br />📚 2000 culture<br />⭐ 2500 prestige</div>
-              </div>
-              <button onClick={() => { setSavedState({ month, year, factions, player, culture, prestige, log }); setScreen('howtoplay'); }}
-                style={{ marginTop: '0.5rem', color: '#c4b5fd', fontSize: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                Full Guide →
-              </button>
-            </div>
-          )}
-
-          {/* Resources & Status */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
-            {[
-              { label: 'Gold', val: Math.floor(player?.gold || 0), col: '#fbbf24', sub: `+${(player?.regionIds.length || 0) * 20}/mo` },
-              { label: 'Food', val: Math.floor(player?.food || 0), col: '#4ade80', sub: `+${(player?.regionIds.length || 0) * 15}/mo` },
-              { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', sub: 'Pool' },
-              { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', sub: 'Strength' },
-            ].map(r => (
-              <div key={r.label} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${r.col}44`, borderRadius: '0.5rem', padding: '0.75rem', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.7rem', color: r.col, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{r.label}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{r.val}</div>
-                <div style={{ fontSize: '0.65rem', color: `${r.col}99` }}>{r.sub}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            {/* Royal Actions */}
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fbbf24' }}>📜 Royal Actions</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-                {['develop', 'recruit', 'diplomacy', 'war', 'peace'].map(a => (
-                  <button key={a} onClick={() => setAction(a)} style={{
-                    padding: '0.6rem',
-                    background: action === a ? '#fbbf24' : 'rgba(0,0,0,0.3)',
-                    color: action === a ? '#000' : '#fbbf24',
-                    border: '1px solid #fbbf24',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase'
-                  }}>
-                    {a}
-                  </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem' }}>
+            {/* Left Column: Management & Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Resources Strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                {[
+                  { label: 'Gold', val: Math.floor(player?.gold || 0), col: '#fbbf24', icon: '💰', sub: `+${(player?.regionIds.length || 0) * 20}` },
+                  { label: 'Food', val: Math.floor(player?.food || 0), col: '#4ade80', icon: '🌾', sub: `+${(player?.regionIds.length || 0) * 15}` },
+                  { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', icon: '👥', sub: 'Pool' },
+                  { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', icon: '⚔️', sub: 'Strength' },
+                ].map(r => (
+                  <div key={r.label} style={{ ...cardStyle, background: 'rgba(255,255,255,0.03)', textAlign: 'left', padding: '1rem', border: `1px solid ${r.col}22`, overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: '-10px', right: '-5px', fontSize: '2.5rem', opacity: 0.05, transform: 'rotate(15deg)' }}>{r.icon}</div>
+                    <div style={{ fontSize: '0.75rem', color: r.col, fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{r.label.toUpperCase()}</div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fff' }}>{r.val.toLocaleString()}</div>
+                    <div style={{ fontSize: '0.7rem', color: `${r.col}aa`, fontWeight: '600' }}>{r.sub} / month</div>
+                  </div>
                 ))}
               </div>
 
-              {action && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid rgba(217,119,6,0.3)' }}>
-                  <div style={{ fontSize: '0.8rem', marginBottom: '0.75rem', color: '#fbbf24' }}>
-                    {action === 'develop' && '🛠️ Develop: -50 gold for resources and manpower.'}
-                    {action === 'recruit' && '⚔️ Recruit: -80 gold, -200 manpower for +500 strength.'}
-                    {(action === 'diplomacy' || action === 'war' || action === 'peace') && (
-                      <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1f2937', color: 'white', border: '1px solid #374151', borderRadius: '0.25rem', padding: '0.4rem', fontSize: '0.75rem' }}>
-                        <option value="">Select Target Dynasty</option>
-                        {others.map(f => (
-                          <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0}) [⚔️ {f.militaryStrength}]</option>
-                        ))}
-                      </select>
-                    )}
+              {/* Actions & Domain Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                {/* Royal Actions Card */}
+                <div style={cardStyle}>
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '1.2rem' }}>📜</span> Royal Actions
+                  </h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                    {['develop', 'recruit', 'diplomacy', 'war', 'peace'].map(a => (
+                      <button key={a} onClick={() => setAction(a)} style={{
+                        padding: '0.75rem 0.4rem',
+                        background: action === a ? 'linear-gradient(135deg, #d97706, #fbbf24)' : 'rgba(255,255,255,0.05)',
+                        color: action === a ? '#451a03' : '#fbbf24',
+                        border: action === a ? 'none' : '1px solid rgba(217,119,6,0.3)',
+                        borderRadius: '0.6rem',
+                        fontSize: '0.7rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        textTransform: 'uppercase',
+                        transition: 'all 0.2s',
+                        boxShadow: action === a ? '0 4px 12px rgba(217,119,6,0.3)' : 'none'
+                      }}>
+                        {a}
+                      </button>
+                    ))}
                   </div>
-                  <button onClick={executeAction} style={{ width: '100%', padding: '0.6rem', background: '#fbbf24', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.8rem' }}>
-                    Execute Action
-                  </button>
-                </div>
-              )}
 
-              <div style={{ marginTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#a78bfa' }}>Stability: {player?.stability}%</span>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.5)', height: '4px', borderRadius: '9999px' }}>
-                  <div style={{ background: '#a78bfa', height: '100%', borderRadius: '9999px', width: `${player?.stability}%` }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Victory Progress */}
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fbbf24' }}>🏆 Victory Progress</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {[{ label: 'Culture 📚', val: culture, max: 2000, col: '#818cf8' }, { label: 'Prestige ⭐', val: prestige, max: 2500, col: '#fbbf24' }].map(r => (
-                  <div key={r.label}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: r.col }}>{r.label}</span>
-                      <span style={{ fontSize: '0.75rem', color: `${r.col}99` }}>{r.val} / {r.max}</span>
+                  {action ? (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '0.8rem', border: '1px solid rgba(217,119,6,0.2)', animation: 'fadeIn 0.3s ease' }}>
+                      <div style={{ fontSize: '0.85rem', marginBottom: '1rem', color: '#fef3c7' }}>
+                        {action === 'develop' && '🛠️ Invest 50 gold into infrastructure to boost food and manpower.'}
+                        {action === 'recruit' && '⚔️ Spend 80 gold and 200 manpower to levy 500 elite soldiers.'}
+                        {(action === 'diplomacy' || action === 'war' || action === 'peace') && (
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#fbbf24', marginBottom: '0.4rem', fontWeight: 'bold' }}>Target Dynasty</div>
+                            <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1e1b4b', color: 'white', border: '1px solid rgba(217,119,6,0.4)', borderRadius: '0.5rem', padding: '0.6rem', fontSize: '0.85rem' }}>
+                              <option value="">Select Target...</option>
+                              {others.map(f => (
+                                <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0})</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={executeAction} style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(to right, #fbbf24, #d97706)', color: '#451a03', fontWeight: 'bold', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(217,119,6,0.2)', transition: 'transform 0.1s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                        Confirm Command
+                      </button>
                     </div>
-                    <div style={{ background: 'rgba(0,0,0,0.5)', height: '8px', borderRadius: '9999px' }}>
-                      <div style={{ background: r.col, height: '100%', borderRadius: '9999px', width: `${Math.min(100, (r.val / r.max) * 100)}%`, transition: 'width 0.5s' }} />
+                  ) : (
+                    <div style={{ height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(254,243,199,0.3)', fontSize: '0.85rem', border: '1px dashed rgba(217,119,6,0.2)', borderRadius: '0.8rem' }}>
+                      Select an action to begin
+                    </div>
+                  )}
+                </div>
+
+                {/* Domain & Stability Card */}
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>🕌</span> Your Mandala
+                    </h2>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#a78bfa', fontWeight: 'bold' }}>STABILITY</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#a78bfa' }}>{player?.stability}%</div>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: '1.5rem', padding: '0.75rem', border: '1px dashed rgba(217,119,6,0.2)', borderRadius: '0.5rem' }}>
-                <div style={{ fontSize: '0.7rem', color: 'rgba(254,243,199,0.6)', textAlign: 'center' }}>
-                  Conquer 🏛️ <strong>{REGIONS.length}</strong> regions to achieve total <strong>Military Dominance</strong>.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Realm Management */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '1rem', marginBottom: '1rem' }}>
-            {/* Your Domain */}
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#fbbf24' }}>🕌 Your Domain</h2>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '12rem', overflowY: 'auto' }}>
-                {myRegions.map(r => (
-                  <div key={r.id} style={{ padding: '0.3rem 0.6rem', border: '1px solid rgba(217,119,6,0.3)', borderRadius: '0.25rem', fontSize: '0.75rem', background: 'rgba(217,119,6,0.1)' }}>
-                    {r.name}
+                  
+                  <div style={{ background: 'rgba(0,0,0,0.4)', height: '6px', borderRadius: '999px', marginBottom: '1.25rem', border: '1px solid rgba(167,139,250,0.2)' }}>
+                    <div style={{ background: 'linear-gradient(to right, #7c3aed, #a78bfa)', height: '100%', borderRadius: '999px', width: `${player?.stability}%`, transition: 'width 0.8s ease-out' }} />
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Frontiers */}
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#f87171' }}>⚔️ Frontiers (Attackable)</h2>
-              <div style={{ maxHeight: '12rem', overflowY: 'auto' }}>
-                {frontiers.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    {frontiers.map(r => (
-                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '0.375rem', fontSize: '0.75rem', background: 'rgba(248,113,113,0.1)' }}>
-                        <span style={{ fontWeight: 'bold' }}>{r.name}</span>
-                        <span style={{ color: '#fca5a5', fontSize: '0.7rem' }}>Occupied by {r.owner}</span>
+                  <div style={{ maxHeight: '10rem', overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {myRegions.map(r => (
+                      <div key={r.id} style={{ padding: '0.4rem 0.8rem', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: '600' }}>
+                        {r.name}
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div style={{ textAlign: 'center', color: 'rgba(254,243,199,0.4)', fontSize: '0.8rem', marginTop: '2rem' }}>No direct neighbors available for conquest.</div>
-                )}
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1rem', marginBottom: '1rem' }}>
-            {/* Chronicles */}
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>📜 Chronicles</h2>
-              <div style={{ maxHeight: '10rem', overflowY: 'auto' }}>
-                {log.map((l, i) => (
-                  <div key={i} style={{ fontSize: '0.75rem', color: i === 0 ? '#fbbf24' : 'rgba(254,243,199,0.7)', marginBottom: '0.4rem', borderLeft: i === 0 ? '2px solid #fbbf24' : 'none', paddingLeft: i === 0 ? '0.5rem' : '0' }}>{l}</div>
-                ))}
-              </div>
-            </div>
-
-            {/* Rivals */}
-            <div style={card}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(217,119,6,0.3)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>Rival Mandalas</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                {others.map(f => (
-                  <div key={f.id} style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)', padding: '0.6rem', borderRadius: '0.25rem', border: '1px solid rgba(217,119,6,0.1)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <span style={{ fontWeight: 'bold' }}>{f.name}</span>
-                      <span style={{ color: (player?.relations[f.id] || 0) > 0 ? '#4ade80' : (player?.relations[f.id] || 0) < 0 ? '#f87171' : '#94a3b8' }}>
-                        {player?.atWar.includes(f.id) ? '⚔️ War' : `Rel: ${player?.relations[f.id] || 0}`}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(254,243,199,0.7)' }}>
-                      <span>🏛️ {f.regionIds.length} regions</span>
-                      <span>⚔️ {f.militaryStrength} army</span>
-                    </div>
+              {/* Chronicles & Frontiers Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                {/* Chronicles */}
+                <div style={{ ...cardStyle, background: 'rgba(0,0,0,0.2)' }}>
+                  <h2 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fbbf24', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>📜</span> The Chronicles
+                  </h2>
+                  <div style={{ maxHeight: '12rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                    {log.map((l, i) => (
+                      <div key={i} style={{ 
+                        fontSize: '0.8rem', 
+                        color: i === 0 ? '#fbbf24' : 'rgba(254,243,199,0.7)', 
+                        marginBottom: '0.6rem', 
+                        padding: '0.5rem', 
+                        background: i === 0 ? 'rgba(217,119,6,0.05)' : 'transparent',
+                        borderRadius: '0.4rem',
+                        borderLeft: i === 0 ? '3px solid #d97706' : '1px solid transparent'
+                      }}>
+                        {l}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Conflict Zones */}
+                <div style={{ ...cardStyle, background: 'rgba(127,29,29,0.05)', borderColor: 'rgba(248,113,113,0.3)' }}>
+                  <h2 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fca5a5', borderBottom: '1px solid rgba(248,113,113,0.2)', paddingBottom: '0.75rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>⚔️</span> Conflict Borders
+                  </h2>
+                  <div style={{ maxHeight: '12rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                    {frontiers.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {frontiers.map(r => (
+                          <div key={r.id} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            padding: '0.75rem', 
+                            background: 'rgba(0,0,0,0.3)', 
+                            border: '1px solid rgba(248,113,113,0.2)', 
+                            borderRadius: '0.6rem'
+                          }}>
+                            <div>
+                              <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#fef3c7' }}>{r.name}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#fca5a5' }}>Held by {r.owner}</div>
+                            </div>
+                            <div style={{ fontSize: '1rem', alignSelf: 'center' }}>🎯</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', color: 'rgba(254,243,199,0.3)', fontSize: '0.8rem', marginTop: '3rem' }}>No direct paths for conquest currently.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Rivals & Progress */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Victory Progress */}
+              <div style={cardStyle}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem' }}>🏆 Victory Progress</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {[
+                    { label: 'Culture 📜', val: culture, max: 2000, col: '#818cf8', sub: 'Enlightenment Path' },
+                    { label: 'Prestige ⭐', val: prestige, max: 2500, col: '#fbbf24', sub: 'Legendary Path' }
+                  ].map(r => (
+                    <div key={r.label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-end' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#fef3c7', fontWeight: '600' }}>{r.label}</div>
+                        <div style={{ fontSize: '0.7rem', color: `${r.col}cc`, fontWeight: 'bold' }}>{r.val} / {r.max}</div>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.5)', height: '10px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.05)', padding: '2px' }}>
+                        <div style={{ background: `linear-gradient(to right, ${r.col}, #fff)`, height: '100%', borderRadius: '999px', width: `${Math.min(100, (r.val / r.max) * 100)}%`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: `0 0 10px ${r.col}44` }} />
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'rgba(254,243,199,0.4)', marginTop: '0.4rem', fontStyle: 'italic' }}>{r.sub}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(217,119,6,0.05)', borderRadius: '0.8rem', border: '1px dashed rgba(217,119,6,0.2)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(254,243,199,0.7)', textAlign: 'center', lineHeight: '1.5' }}>
+                    Control all 🏛️ <strong>{REGIONS.length}</strong> regions to claim <strong>Military Hegemony</strong>.
+                  </div>
+                </div>
+              </div>
+
+              {/* Rivals List */}
+              <div style={cardStyle}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem' }}>👑 Rival Mandalas</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '30rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                  {others.map(f => (
+                    <div key={f.id} style={{ 
+                      background: 'rgba(0,0,0,0.3)', 
+                      padding: '1rem', 
+                      borderRadius: '0.8rem', 
+                      border: '1px solid rgba(255,255,255,0.05)',
+                      transition: 'border-color 0.2s'
+                    }} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(217,119,6,0.3)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                        <span style={{ fontWeight: 'bold', color: '#fbbf24', fontSize: '0.9rem' }}>{f.name}</span>
+                        <span style={{ 
+                          fontSize: '0.7rem', 
+                          fontWeight: 'bold',
+                          color: player?.atWar.includes(f.id) ? '#f87171' : (player?.relations[f.id] || 0) > 0 ? '#4ade80' : '#94a3b8',
+                          background: player?.atWar.includes(f.id) ? 'rgba(248,113,113,0.1)' : 'rgba(0,0,0,0.2)',
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '0.4rem'
+                        }}>
+                          {player?.atWar.includes(f.id) ? '⚔️ AT WAR' : `REL: ${player?.relations[f.id] || 0}`}
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(254,243,199,0.5)' }}>🏛️ {f.regionIds.length} Regions</div>
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(254,243,199,0.5)', textAlign: 'right' }}>⚔️ {f.militaryStrength.toLocaleString()} Power</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Event */}
+          {/* Turn Action Bar */}
+          <div style={{ position: 'sticky', bottom: '1.5rem', marginTop: '2rem', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+            <div style={{ background: 'rgba(30,27,75,0.8)', backdropFilter: 'blur(15px)', padding: '0.6rem 2rem', borderRadius: '999px', border: '1px solid rgba(217,119,6,0.4)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)', display: 'flex', gap: '2rem', alignItems: 'center' }}>
+              <button 
+                onClick={nextTurn} 
+                disabled={!!event} 
+                style={{
+                  padding: '0.75rem 2.5rem', 
+                  fontSize: '1rem', 
+                  fontWeight: '900', 
+                  borderRadius: '999px', 
+                  border: 'none', 
+                  cursor: event ? 'not-allowed' : 'pointer',
+                  background: event ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #d97706, #fbbf24)', 
+                  color: event ? 'rgba(255,255,255,0.3)' : '#451a03',
+                  boxShadow: event ? 'none' : '0 4px 15px rgba(217,119,6,0.4)',
+                  transition: 'all 0.2s',
+                  letterSpacing: '0.05em'
+                }}
+                onMouseEnter={(e) => { if(!event) e.currentTarget.style.transform = 'scale(1.05)'; }}
+                onMouseLeave={(e) => { if(!event) e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                {event ? 'RESOLVE FATE' : 'SEAL THE TURN →'}
+              </button>
+            </div>
+          </div>
+
+          {/* Event Overlay */}
           {event && (
-            <div style={{ ...card, background: 'rgba(88,28,135,0.35)', border: '2px solid rgba(168,85,247,0.5)', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#e9d5ff', marginBottom: '0.5rem' }}>{event.title}</h2>
-              <p style={{ color: '#ddd6fe', marginBottom: '1rem', lineHeight: '1.6' }}>{event.description}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {event.choices.map((c, i) => (
-                  <button key={i} onClick={() => handleEvent(c)} style={{ padding: '0.75rem', background: 'rgba(88,28,135,0.5)', border: '2px solid rgba(168,85,247,0.4)', borderRadius: '0.5rem', color: '#e9d5ff', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem' }}>
-                    {c.text}
-                  </button>
-                ))}
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+              <div style={{ ...cardStyle, maxWidth: '36rem', width: '100%', padding: '2.5rem', textAlign: 'center', border: '2px solid rgba(168,85,247,0.5)', background: 'linear-gradient(135deg, #1e1b4b, #4c1d95)', boxShadow: '0 40px 100px rgba(0,0,0,0.8)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📜</div>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '1rem', fontFamily: 'Georgia,serif' }}>{event.title}</h2>
+                <p style={{ color: '#ddd6fe', marginBottom: '2.5rem', lineHeight: '1.8', fontSize: '1.1rem', fontStyle: 'italic' }}>"{event.description}"</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {event.choices.map((c, i) => (
+                    <button key={i} onClick={() => handleEvent(c)} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '0.8rem', color: '#e9d5ff', cursor: 'pointer', textAlign: 'center', fontSize: '1rem', transition: 'all 0.2s', fontWeight: '600' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+                      {c.text}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
+          {/* Turn Report Overlay */}
+          {turnSummary && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 150, padding: '1rem' }}>
+              <div style={{ ...cardStyle, maxWidth: '30rem', width: '100%', padding: '2rem', background: 'linear-gradient(135deg, #1e1b4b, #1e3a8a)', border: '1px solid #60a5fa' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif' }}>Turn {month}/{year} Report</h2>
+                  <div style={{ fontSize: '1.5rem' }}>📜</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '2rem' }}>
+                  {turnSummary.map((line, i) => (
+                    <div key={i} style={{ padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.6rem', borderLeft: `4px solid ${line.includes('Victory') ? '#4ade80' : line.includes('Defeat') ? '#ef4444' : '#60a5fa'}`, color: '#fef3c7', fontSize: '0.95rem', lineHeight: '1.4' }}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setTurnSummary(null)}
+                  style={{ width: '100%', padding: '1rem', background: 'linear-gradient(to right, #2563eb, #3b82f6)', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.6rem', cursor: 'pointer', fontSize: '1rem', boxShadow: '0 4px 15px rgba(37,99,235,0.3)' }}
+                >
+                  DISMISS REPORT
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* End Turn */}
-          <div style={{ textAlign: 'center' }}>
-            <button onClick={nextTurn} disabled={!!event} style={{
-              padding: '0.875rem 3rem', fontSize: '1.125rem', fontWeight: 'bold', borderRadius: '0.5rem', border: 'none', cursor: event ? 'not-allowed' : 'pointer',
-              background: event ? '#374151' : 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white',
-            }}>
-              {event ? 'Resolve Event First' : 'End Turn →'}
-            </button>
-          </div>
+          {/* Exit Confirmation Overlay */}
+          {showExitConfirm && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
+              <div style={{ ...cardStyle, maxWidth: '28rem', width: '100%', padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(239,68,68,0.5)' }}>
+                <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🏘️</div>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: 'white', marginBottom: '0.75rem', fontFamily: 'Georgia,serif' }}>Seal Your Legacy?</h2>
+                <p style={{ color: '#cbd5e1', marginBottom: '2.5rem', fontSize: '1rem', lineHeight: '1.6' }}>The Mandala of Power never rests. Will you save your progress or let history forget your reign?</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <button
+                    onClick={() => { performSave(); setScreen('menu'); setShowExitConfirm(false); }}
+                    style={{ width: '100%', padding: '1rem', background: 'linear-gradient(to right, #059669, #10b981)', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.8rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(16,185,129,0.3)' }}
+                  >
+                    💾 SAVE & RETURN TO COURT
+                  </button>
+                  <button
+                    onClick={() => { setScreen('menu'); setShowExitConfirm(false); clearSave(); }}
+                    style={{ width: '100%', padding: '1rem', background: 'rgba(239,68,68,0.1)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '0.8rem', cursor: 'pointer' }}
+                  >
+                    🗑️ ABANDON PROGRESS
+                  </button>
+                  <button
+                    onClick={() => setShowExitConfirm(false)}
+                    style={{ width: '100%', padding: '1rem', background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', cursor: 'pointer' }}
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Victory Prompt */}
-        {victoryPrompt && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '2rem' }}>
-            <div style={{ background: 'linear-gradient(135deg,#78350f,#7f1d1d,#581c87)', border: '4px solid #d97706', borderRadius: '1rem', padding: '2rem', maxWidth: '32rem', width: '100%', textAlign: 'center', color: '#fef3c7' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '0.75rem' }}>🏆</div>
-              <h2 style={{ fontSize: '2rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', marginBottom: '0.5rem' }}>Victory Achieved!</h2>
-              <p style={{ color: '#fbbf24', fontSize: '1.125rem', fontStyle: 'italic', marginBottom: '0.75rem' }}>
-                {victoryType === 'military' ? 'Chakravartin — Universal Ruler' :
-                  victoryType === 'conquest' ? 'Samrāṭ — Emperor of All' :
-                    victoryType === 'cultural' ? 'Kavi Chakravarti — Emperor of Arts' : 'Mahārājādhirāja — King of Kings'}
-              </p>
-              <p style={{ marginBottom: '1.5rem' }}>Claim your victory now, or keep expanding your legacy?</p>
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                <button onClick={() => { setVictoryPrompt(false); setScreen('victory'); }} style={{ padding: '0.75rem 1.75rem', fontWeight: 'bold', background: 'linear-gradient(to right,#d97706,#f59e0b)', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem' }}>
-                  Claim Victory
-                </button>
-                <button onClick={() => { setVictoryPrompt(false); addLog('You press on for greater glory...'); }} style={{ padding: '0.75rem 1.75rem', fontWeight: 'bold', background: 'linear-gradient(to right,#7c3aed,#8b5cf6)', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem' }}>
-                  Continue Playing
-                </button>
-              </div>
+        {/* Global Notifications Overlay */}
+        <div style={{ position: 'fixed', top: '2rem', right: '2rem', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '300px' }}>
+          {notifications.map(n => (
+            <div key={n.id} style={{
+              padding: '1rem',
+              background: n.type === 'error' ? 'rgba(127,29,29,0.9)' : n.type === 'success' ? 'rgba(6,95,70,0.9)' : n.type === 'warning' ? 'rgba(180,83,9,0.9)' : 'rgba(30,58,138,0.9)',
+              backdropFilter: 'blur(8px)',
+              border: `1px solid ${n.type === 'error' ? '#f87171' : n.type === 'success' ? '#34d399' : n.type === 'warning' ? '#fbbf24' : '#60a5fa'}`,
+              borderRadius: '0.75rem',
+              color: '#fff',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+              animation: 'fadeInRight 0.3s ease-out'
+            }}>
+              {n.msg}
             </div>
-          </div>
-        )}
-
-        {/* Turn Summary Modal */}
-        {turnSummary && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-            <div style={{ background: 'linear-gradient(135deg,#1e1b4b,#312e81)', border: '2px solid #818cf8', borderRadius: '1rem', padding: '1.5rem', maxWidth: '28rem', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif' }}>Turn {month}/{year} Report</h2>
-                <div style={{ fontSize: '1.5rem' }}>📜</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                {turnSummary.map((line, i) => (
-                  <div key={i} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '0.5rem', borderLeft: `3px solid ${line.includes('Victory') ? '#4ade80' : line.includes('Defeat') ? '#ef4444' : '#60a5fa'}`, color: '#fef3c7', fontSize: '0.9rem' }}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setTurnSummary(null)}
-                style={{ width: '100%', padding: '0.875rem', background: 'linear-gradient(to right,#4f46e5,#6366f1)', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem' }}
-              >
-                Close Report
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Exit Confirmation Modal */}
-        {showExitConfirm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
-            <div style={{ background: 'linear-gradient(135deg,#1e1b4b,#312e81)', border: '2px solid #818cf8', borderRadius: '1rem', padding: '2rem', maxWidth: '28rem', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚪</div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem', fontFamily: 'Georgia,serif' }}>Exit Your Reign?</h2>
-              <p style={{ color: '#c4b5fd', marginBottom: '2rem', fontSize: '0.95rem' }}>Do you want to save your progress or walk away and abandon this dynasty?</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button
-                  onClick={() => { performSave(); setScreen('menu'); setShowExitConfirm(false); }}
-                  style={{ width: '100%', padding: '0.875rem', background: 'linear-gradient(to right,#059669,#10b981)', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
-                >
-                  💾 Save & Exit
-                </button>
-                <button
-                  onClick={() => { setScreen('menu'); setShowExitConfirm(false); clearSave(); }}
-                  style={{ width: '100%', padding: '0.875rem', background: 'rgba(239,68,68,0.2)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '0.5rem', cursor: 'pointer' }}
-                >
-                  🗑️ Abandon Reign
-                </button>
-                <button
-                  onClick={() => setShowExitConfirm(false)}
-                  style={{ width: '100%', padding: '0.875rem', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', cursor: 'pointer' }}
-                >
-                  Back to Game
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     );
   }
