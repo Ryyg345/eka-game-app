@@ -421,6 +421,7 @@ function MandalaOfKings() {
       const cost = hasTrait('diplomat') ? 24 : 30;
       const tgt = fs.find(f => f.id === targetId);
       if (!tgt) { notify('❌ Diplomatic Mission: You must select a target dynasty first.', 'error'); return; }
+      if (p.atWar.includes(tgt.id)) { notify('❌ State of War: Envoys cannot be sent to a faction you are currently at war with.', 'error'); return; }
       if (p.gold < cost) { notify(`❌ Insufficient Treasury: Need ${cost} Gold for diplomatic envoys.`, 'error'); return; }
       p.gold -= cost;
       p.relations[tgt.id] = Math.min(100, (p.relations[tgt.id] || 0) + 20);
