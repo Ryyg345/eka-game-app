@@ -1112,21 +1112,29 @@ function MandalaOfKings() {
 
     const InfoIcon = ({ content, side = 'left' }) => {
       const [showInfo, setShowInfo] = useState(false);
+      const [pos, setPos] = useState({ top: 0, left: 0 });
+      
+      const handleShow = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setPos({ top: rect.top, left: rect.left });
+        setShowInfo(true);
+      };
+
       return (
-        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '0.4rem', pointerEvents: 'auto', zIndex: showInfo ? 10000 : 1 }}>
+        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '0.4rem', pointerEvents: 'auto' }}>
           <div 
-            onMouseEnter={() => setShowInfo(true)}
+            onMouseEnter={handleShow}
             onMouseLeave={() => setShowInfo(false)}
-            onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}
+            onClick={(e) => { e.stopPropagation(); handleShow(e); }}
             style={{ width: '1rem', height: '1rem', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: '#fbbf24', cursor: 'pointer', fontWeight: 'bold' }}
           >
             i
           </div>
           {showInfo && (
             <div style={{ 
-              position: 'absolute', 
-              top: '1.4rem', 
-              [side === 'left' ? 'left' : 'right']: 0, 
+              position: 'fixed', 
+              top: pos.top + 25, 
+              left: Math.min(window.innerWidth - (isMobile ? 220 : 280), Math.max(10, side === 'left' ? pos.left : pos.left - (isMobile ? 180 : 240))), 
               width: isMobile ? '12rem' : '16rem', 
               background: 'rgba(30,27,75,0.98)', 
               border: '1px solid #fbbf24', 
@@ -1134,7 +1142,7 @@ function MandalaOfKings() {
               borderRadius: '0.6rem', 
               fontSize: '0.75rem', 
               color: '#fef3c7', 
-              zIndex: 9999, 
+              zIndex: 99999, 
               boxShadow: '0 8px 30px rgba(0,0,0,0.8)', 
               backdropFilter: 'blur(15px)', 
               pointerEvents: 'none',
