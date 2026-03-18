@@ -1117,10 +1117,21 @@ function MandalaOfKings() {
                             <div style={{ fontSize: '0.75rem', color: '#fbbf24', marginBottom: '0.4rem', fontWeight: 'bold' }}>Target Dynasty</div>
                             <select onChange={(e) => setTargetId(parseInt(e.target.value))} value={targetId || ''} style={{ width: '100%', background: '#1e1b4b', color: 'white', border: '1px solid rgba(217,119,6,0.4)', borderRadius: '0.5rem', padding: '0.6rem', fontSize: '0.85rem' }}>
                               <option value="">Select Target...</option>
-                              {others.map(f => (
-                                <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0})</option>
-                              ))}
+                              {others
+                                .filter(f => {
+                                  if (action === 'war') return player.regionIds.some(rid => REGIONS.find(r => r.id === rid)?.neighbors.some(nb => f.regionIds.includes(nb)));
+                                  if (action === 'peace') return player.atWar.includes(f.id);
+                                  return true;
+                                })
+                                .map(f => (
+                                  <option key={f.id} value={f.id}>{f.name} (Rel: {player?.relations[f.id] || 0})</option>
+                                ))}
                             </select>
+                            <div style={{ fontSize: '0.65rem', color: 'rgba(254,243,199,0.5)', marginTop: '0.4rem', fontStyle: 'italic' }}>
+                              {action === 'war' && '⚠️ Only neighboring dynasties can be targeted for conquest.'}
+                              {action === 'peace' && '🕊️ Select a faction to offer terms of surrender or compromise.'}
+                              {action === 'diplomacy' && '🤝 Send envoys to improve relations with non-hostile kingdoms.'}
+                            </div>
                           </div>
                         )}
                       </div>
