@@ -1639,25 +1639,30 @@ function MandalaOfKings() {
           
           {/* Global Info Tooltip Overlay */}
           {activeHelp && (
-            <div style={{ 
-              position: 'fixed', 
-              top: activeHelp.top + 25, 
-              left: Math.min(window.innerWidth - (isMobile ? 220 : 280), Math.max(10, activeHelp.side === 'left' ? activeHelp.left : activeHelp.left - (isMobile ? 180 : 240))), 
-              width: isMobile ? '12.5rem' : '16rem', 
-              background: 'rgba(30,27,75,0.98)', 
-              border: '1px solid #fbbf24', 
-              padding: '1rem', 
-              borderRadius: '0.8rem', 
-              fontSize: '0.8rem', 
-              color: '#fef3c7', 
-              zIndex: 1000000, 
-              boxShadow: '0 12px 40px rgba(0,0,0,0.8)', 
-              backdropFilter: 'blur(16px)', 
-              pointerEvents: 'none',
-              textAlign: 'left',
-              lineHeight: '1.5'
-            }}>
-               {activeHelp.content}
+            <div 
+              onClick={() => setActiveHelp(null)}
+              style={{ position: 'fixed', inset: 0, zIndex: 1000000, cursor: 'pointer' }}
+            >
+              <div style={{ 
+                position: 'fixed', 
+                top: activeHelp.top + 25, 
+                left: Math.min(window.innerWidth - (isMobile ? 220 : 280), Math.max(10, activeHelp.side === 'left' ? activeHelp.left : activeHelp.left - (isMobile ? 180 : 240))), 
+                width: isMobile ? '12.5rem' : '16rem', 
+                background: 'rgba(30,27,75,0.98)', 
+                border: '1px solid #fbbf24', 
+                padding: '1rem', 
+                borderRadius: '0.8rem', 
+                fontSize: '0.8rem', 
+                color: '#fef3c7', 
+                boxShadow: '0 12px 40px rgba(0,0,0,0.8)', 
+                backdropFilter: 'blur(16px)', 
+                textAlign: 'left',
+                lineHeight: '1.5',
+                pointerEvents: 'none'
+              }}>
+                 {activeHelp.content}
+                 {isMobile && <div style={{ marginTop: '0.8rem', fontSize: '0.65rem', color: '#fbbf24', opacity: 0.7, textAlign: 'center', fontStyle: 'italic' }}>Tap anywhere to dismiss</div>}
+              </div>
             </div>
           )}
         </div>
