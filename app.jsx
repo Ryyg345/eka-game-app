@@ -506,6 +506,25 @@ function MandalaOfKings() {
       p.stability = Math.min(100, p.stability + 2);
     }
 
+    // LOW STABILITY PENALTIES
+    if (p.stability < 50) {
+      goldIncome = Math.floor(goldIncome * 0.8);
+      foodIncome = Math.floor(foodIncome * 0.8);
+      if (p.stability < 30) {
+        // Rebellion chance: 15% per turn at <30 stability
+        if (Math.random() < 0.15 && p.regionIds.length > 1) {
+          const lose = pick(p.regionIds);
+          p.regionIds = p.regionIds.filter(rid => rid !== lose);
+          const rName = REGIONS.find(r => r.id === lose).name;
+          notify(`🔥 Rebellion: Low stability has led to a revolt in ${rName}!`, 'error');
+          localAddLog(`🔥 Revolt! Lost ${rName} due to low stability`);
+          // Region is seized by a random neighbor if possible
+          const potentialSeizers = updatedFactions.filter(f => !f.isPlayer && f.regionIds.length > 0 && REGIONS.find(r => r.id === lose).neighbors.some(nb => f.regionIds.includes(nb)));
+          if (potentialSeizers.length) pick(potentialSeizers).regionIds.push(lose);
+        }
+      }
+    }
+
     p.gold += goldIncome;
     p.food += foodIncome;
     p.manpower += manpowerGrowth;
