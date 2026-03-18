@@ -1517,6 +1517,22 @@ function MandalaOfKings() {
               <div style={{ ...cardStyle, maxWidth: '36rem', width: '100%', padding: '2.5rem', textAlign: 'center', border: '2px solid rgba(168,85,247,0.5)', background: 'linear-gradient(135deg, #1e1b4b, #4c1d95)', boxShadow: '0 40px 100px rgba(0,0,0,0.8)' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📜</div>
                 <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '1rem', fontFamily: 'Georgia,serif' }}>{event.title}</h2>
+                
+                {/* Mini Treasury for Decision Insight */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.25rem', marginBottom: '2rem', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '1rem', border: '1px solid rgba(251,191,36,0.1)', flexWrap: 'wrap' }}>
+                  {[
+                    { icon: '💰', val: player?.gold || 0, col: '#fbbf24' },
+                    { icon: '🌾', val: player?.food || 0, col: '#4ade80' },
+                    { icon: '👥', val: player?.manpower || 0, col: '#f87171' },
+                    { icon: '⚔️', val: player?.militaryStrength || 0, col: '#fb923c' }
+                  ].map(r => (
+                    <div key={r.icon} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                      <span>{r.icon}</span>
+                      <span style={{ color: r.col, fontWeight: 'bold' }}>{Math.floor(r.val).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+
                 <p style={{ color: '#ddd6fe', marginBottom: '2.5rem', lineHeight: '1.8', fontSize: '1.1rem', fontStyle: 'italic' }}>"{event.description}"</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {event.choices.map((c, i) => (
