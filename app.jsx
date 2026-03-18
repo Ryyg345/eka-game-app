@@ -25,9 +25,9 @@ const DYNASTY_DATA = {
 };
 
 const VARNAS = [
-  { id: 'brahmin', name: 'Brahmin (Vidhwat)', icon: '🕉️', bonus: 'Culture & Wisdom', desc: 'Masters of lore: +20% Culture and +2 Stability each turn.' },
+  { id: 'brahmin', name: 'Brahmin (Vipra)', icon: '🕉️', bonus: 'Culture & Wisdom', desc: 'Masters of lore: +20% Culture and +2 Stability each turn.' },
   { id: 'kshatriya', name: 'Kshatriya (Rājanya)', icon: '⚔️', bonus: 'Might & Conquest', desc: 'Masters of war: +200 Military Strength and +10% Battle Power.' },
-  { id: 'vaishya', name: 'Vaishya (Vanij)', icon: '💰', bonus: 'Wealth & Prosperity', desc: 'Masters of coin: +20% Gold income and -20 Gold to construction.' }
+  { id: 'vaishya', name: 'Vaishya (Vāṇijya)', icon: '💰', bonus: 'Wealth & Prosperity', desc: 'Masters of coin: +20% Gold income and -20 Gold to construction.' }
 ];
 
 const DYNASTY_NAMES = Object.keys(DYNASTY_DATA);
@@ -298,82 +298,37 @@ function MandalaOfKings() {
 
   const addLog = (msg) => setLog(p => [msg, ...p].slice(0, 10));
 
-  const startGame = (playerDynastyIndex = null) => {
-    const n = rnd(6, 10);
-    // Shuffle all available dynasty indices
-    let allIndices = Array.from({ length: DYNASTY_NAMES.length }, (_, i) => i);
-    for (let i = allIndices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
-    }
+  const startGame = (pIdx = -1, customData = null) => {
+    let newFactions = [];
+    let playerFaction = null;
 
-    // If a dynasty was selected, ensure it's at the start and included
-    let selectedIndices;
-    if (playerDynastyIndex !== null) {
-      const filtered = allIndices.filter(i => i !== playerDynastyIndex);
-      selectedIndices = [playerDynastyIndex, ...filtered.slice(0, n - 1)];
+    if (customData) {
+      playerFaction = makeFaction(0, true, customData);
+      playerFaction.regionIds = [customData.capitalId];
+      newFactions.push(playerFaction);
+      DYNASTY_NAMES.forEach((name, i) => {
+        const ai = makeFaction(i + 1);
+        ai.regionIds = [DYNASTY_REGIONS[name]];
+        newFactions.push(ai);
+      });
     } else {
-      selectedIndices = allIndices.slice(0, n);
+      const pIndex = pIdx === -1 ? rnd(0, DYNASTY_NAMES.length - 1) : pIdx;
+      DYNASTY_NAMES.forEach((name, i) => {
+        const isP = i === pIndex;
+        const faction = makeFaction(i, isP);
+        faction.regionIds = [DYNASTY_REGIONS[name]];
+        newFactions.push(faction);
+        if (isP) playerFaction = faction;
+      });
     }
 
-    const fs = selectedIndices.map((dIdx, i) => makeFaction(dIdx, i === 0));
-
-    // DIFFICULTY SCALING: Adjust starting stats
-    const pFac = fs[0];
-    if (difficulty === 'easy') {
-      pFac.gold = Math.floor(pFac.gold * 1.5);
-      pFac.food = Math.floor(pFac.food * 1.5);
-      pFac.manpower = Math.floor(pFac.manpower * 1.25);
-    } else if (difficulty === 'difficult') {
-      pFac.gold = Math.floor(pFac.gold * 0.75);
-      pFac.food = Math.floor(pFac.food * 0.75);
-      pFac.manpower = Math.floor(pFac.manpower * 0.75);
-    }
-
-    // Assign Regions
-    const factionMap = {};
-    fs.forEach(f => { factionMap[f.name] = f; f.regionIds = []; });
-
-    // Step 1: Give everyone their home region
-    fs.forEach(f => {
-      const home = DYNASTY_REGIONS[f.name] || REGIONS[rnd(0, REGIONS.length - 1)].id;
-      if (!fs.some(other => other.regionIds.includes(home))) {
-        f.regionIds.push(home);
-      }
-    });
-
-    // Step 2: Fill remaining regions
-    REGIONS.forEach(reg => {
-      if (!fs.some(f => f.regionIds.includes(reg.id))) {
-        const potential = fs.filter(f => f.regionIds.some(rid => REGIONS.find(r => r.id === rid).neighbors.includes(reg.id)));
-        const target = potential.length ? pick(potential) : pick(fs);
-        target.regionIds.push(reg.id);
-      }
-    });
-
-    // Normalize stats based on regions
-    fs.forEach(f => {
-      const t = f.regionIds.length;
-      f.manpower = t * rnd(500, 1000);
-      f.militaryStrength = t * rnd(1000, 2000);
-      f.territories = t; // derived but kept for some legacy UI if needed
-      
-      // Secondary difficulty scaling for player after region calculation
-      if (f.isPlayer) {
-        if (difficulty === 'easy') { f.militaryStrength = Math.floor(f.militaryStrength * 1.2); }
-    setMonth(1);
-    setYear(600);
+    setFactions(newFactions); setPlayer(playerFaction);
+    setScreen('playing'); setMonth(1); setYear(600);
     setCulture(difficulty === 'easy' ? 20 : 10);
     setPrestige(difficulty === 'easy' ? 30 : 20);
-    setLog([`Your reign begins on ${difficulty.toUpperCase()} difficulty. May the gods favor your dynasty.`]);
-    setEvent(null);
-    setAction(null);
-    setTargetId(null);
-    setVictoryPrompt(false);
-    setVictoryType(null);
-    setSavedState(null);
+    setLog([`The chronicles of ${playerFaction.name} begin.`]);
+    setEvent(null); setAction(null); setTargetId(null); setVictoryPrompt(false);
     clearSave();
-    setScreen('playing');
   };
 
   const handleEvent = (choice) => {
@@ -386,93 +341,59 @@ function MandalaOfKings() {
     if (e.stability) p.stability = Math.max(0, Math.min(100, p.stability + e.stability));
     if (e.prestige) setPrestige(v => v + e.prestige);
     if (e.culture) setCulture(v => v + e.culture);
+    
     if (e.war_chance && Math.random() < e.war_chance) {
-      // Prioritize enemies with lowest relations, exclude those with high relations (>80)
-      const potentialEnemies = factions.filter(f => !f.isPlayer && !f.atWar.includes(p.id) && f.regionIds.length > 0 && (p.relations[f.id] || 0) < 80);
+      const potentialEnemies = factions.filter(f => !f.isPlayer && f.regionIds.length > 0 && (p.relations[f.id] || 0) < 80);
       if (potentialEnemies.length) {
-        // Pick the one with the lowest relations
         const enemy = potentialEnemies.reduce((prev, curr) => (p.relations[prev.id] || 0) < (p.relations[curr.id] || 0) ? prev : curr);
-        p.atWar = [...p.atWar, enemy.id]; enemy.atWar = [...enemy.atWar, p.id]; 
-        notify(`⚔️ Aggression: The ${enemy.name} Dynasty has declared war citing past grievances!`, 'error');
-        addLog(`⚔️ ${enemy.name} declares war!`);
+        p.atWar = [...p.atWar, enemy.id]; 
+        notify(`⚔️ Aggression: ${enemy.name} has declared war!`, 'error');
       }
     }
     if (e.duel) {
-      if (Math.random() > 0.4) { setPrestige(v => v + 20); addLog('🏆 You won the duel! +20 prestige'); }
-      else { setPrestige(v => Math.max(0, v - 10)); addLog('💔 You lost the duel. -10 prestige'); }
+      if (Math.random() > 0.45) { setPrestige(v => v + 50); notify('🏆 Duel Victory!', 'success'); }
+      else { p.stability -= 15; notify('💔 Duel Defeat', 'error'); }
     }
-    setPlayer(p);
-    setFactions(fs => fs.map(f => f.id === 0 ? p : f));
-    addLog(`${event.title} resolved.`);
-    setEvent(null);
+    setPlayer(p); setEvent(null);
+    addLog(`📜 ${choice.text}`);
   };
 
   const executeAction = () => {
     if (!action || !player) return;
-    const hasTrait = (tid) => player.ruler.traits.some(t => t.id === tid);
-    const hasPerk = (pid) => player.ruler.perks.includes(pid);
+    const p = { ...player };
+    const hasPerk = (pid) => p.ruler.perks.includes(pid);
+    const hasTrait = (tid) => p.ruler.traits.some(t => t.id === tid);
     
-    let p = { ...player };
-    let fs = [...factions];
-    
-    // XP Gain for taking action
-    p.ruler.xp += 40;
+    let msg = '';
+    const costMult = p.varna === 'vaishya' ? 0.6 : (hasPerk('statecraft') ? 0.75 : 1);
 
     if (action === 'develop') {
-      const cost = hasPerk('statecraft') ? 30 : 50;
-      if (p.gold < cost) { notify(`❌ Insufficient Treasury: Need ${cost} Gold to develop regions.`, 'error'); return; }
-      p.gold -= cost; p.food += 30; p.manpower += 100;
-      notify('📈 Development complete: Infrastructure improved across your realms!', 'success');
-      addLog('📈 Realm developed: +30 food, +100 manpower');
-    }
-    if (action === 'recruit') {
+      const cost = Math.floor(50 * costMult);
+      if (p.gold < cost) return notify('💰 Treasury empty!', 'error');
+      p.gold -= cost; p.food += 100; p.manpower += 200;
+      setCulture(v => v + 5);
+      msg = `🛠️ Development: Invested ${cost} gold in infrastructure.`;
+    } else if (action === 'recruit') {
       const cost = hasPerk('warfare') ? 60 : 80;
-      if (p.gold < cost || p.manpower < 200) { notify(`❌ Insufficient Resources: Recruitment requires ${cost} Gold and 200 Manpower.`, 'error'); return; }
-      p.gold -= cost; p.manpower -= 200; p.militaryStrength += 500;
-      notify('⚔️ Levies raised: Your military strength has grown by 500!', 'success');
-      addLog('⚔️ Army recruited: +500 military strength');
+      if (p.gold < cost || p.manpower < 250) return notify('🚫 Insufficient resources!', 'error');
+      p.gold -= cost; p.manpower -= 250; p.militaryStrength += 600;
+      msg = `⚔️ Recruitment: Raised 600 soldiers.`;
+    } else if (action === 'diplomacy' && targetId) {
+      const cost = hasTrait('diplomat') ? 25 : 40;
+      if (p.gold < cost) return notify('💰 Need gold for envoys!', 'error');
+      p.gold -= cost; p.relations[targetId] = Math.min(100, (p.relations[targetId] || 0) + 20);
+      msg = `🤝 Diplomacy: Envoys reached the court of ${factions.find(f => f.id === targetId).name}.`;
+    } else if (action === 'war' && targetId) {
+      p.atWar.push(targetId); p.relations[targetId] = -100;
+      msg = `⚔️ Declaration: War declared on ${factions.find(f => f.id === targetId).name}!`;
+    } else if (action === 'peace' && targetId) {
+      if (p.gold < 150) return notify('💰 Tribute required!', 'error');
+      p.gold -= 150; p.atWar = p.atWar.filter(id => id !== targetId);
+      msg = `🕊️ Peace: Treaty signed with ${factions.find(f => f.id === targetId).name}.`;
     }
-    if (action === 'diplomacy') {
-      const cost = hasTrait('diplomat') ? 24 : 30;
-      const tgt = fs.find(f => f.id === targetId);
-      if (!tgt) { notify('❌ Diplomatic Mission: You must select a target dynasty first.', 'error'); return; }
-      if (p.atWar.includes(tgt.id)) { notify('❌ State of War: Envoys cannot be sent to a faction you are currently at war with.', 'error'); return; }
-      if (p.gold < cost) { notify(`❌ Insufficient Treasury: Need ${cost} Gold for diplomatic envoys.`, 'error'); return; }
-      p.gold -= cost;
-      p.relations[tgt.id] = Math.min(100, (p.relations[tgt.id] || 0) + 20);
-      tgt.relations[p.id] = p.relations[tgt.id];
-      notify(`🤝 Success: Relations with the ${tgt.name} Dynasty have been improved.`, 'success');
-      addLog(`🤝 Relations improved with ${tgt.name}`);
-    }
-    if (action === 'war') {
-      const tgt = fs.find(f => f.id === targetId);
-      if (!tgt) { notify('❌ War Council: You must select a target dynasty to declare war.', 'error'); return; }
-      if (p.atWar.includes(tgt.id)) { notify('❌ Already at War: Your armies are already engaged with this faction.', 'error'); return; }
 
-      const isNeighbor = p.regionIds.some(rid => {
-        const reg = REGIONS.find(r => r.id === rid);
-        return reg.neighbors.some(nb => tgt.regionIds.includes(nb));
-      });
-
-      if (!isNeighbor) { notify('❌ Distance Error: You can only declare war on direct neighbors.', 'error'); return; }
-
-      p.atWar = [...p.atWar, tgt.id]; tgt.atWar = [...tgt.atWar, p.id];
-      notify(`⚔️ Sound the Drums: War has been declared upon the ${tgt.name} Dynasty!`, 'warning');
-      addLog(`⚔️ War declared on ${tgt.name}!`);
-    }
-    if (action === 'peace') {
-      const tgt = fs.find(f => f.id === targetId);
-      if (!tgt) { notify('❌ Peace Negotiations: Select a faction to offer terms.', 'error'); return; }
-      if (!p.atWar.includes(tgt.id)) { notify('❌ No Conflict: You are not currently at war with this faction.', 'error'); return; }
-      if (p.gold < 50) { notify('❌ Insufficient Treasury: Need 50 Gold for peace tribute.', 'error'); return; }
-      p.gold -= 50;
-      p.atWar = p.atWar.filter(id => id !== tgt.id);
-      tgt.atWar = tgt.atWar.filter(id => id !== p.id);
-      notify(`✌️ Peace Restored: A treaty has been signed with the ${tgt.name} Dynasty.`, 'success');
-      addLog(`✌️ Peace made with ${tgt.name}`);
-    }
-    setPlayer(p); setFactions(fs.map(f => f.id === 0 ? p : f));
-    setAction(null); setTargetId(null);
+    p.ruler.xp += 40; setPlayer(p); setAction(null); setTargetId(null);
+    if (msg) { addLog(msg); notify(msg, 'success'); }
   };
 
   const nextTurn = () => {
@@ -624,52 +545,6 @@ function MandalaOfKings() {
     else if (p.regionIds.length <= 0) { setScreen('ended'); }
     
     if (Math.random() < 0.7) setEvent(pick(EVENTS));
-  };
-
-  const handleEvent = (choice) => {
-    if (!player) return;
-    const p = { ...player };
-    const e = choice.effect;
-    if (e.gold) p.gold += e.gold;
-    if (e.food) p.food += e.food;
-    if (e.stability) p.stability = Math.min(100, Math.max(0, p.stability + e.stability));
-    if (e.culture) setCulture(v => v + e.culture);
-    if (e.prestige) setPrestige(v => v + e.prestige);
-    setPlayer(p); setEvent(null);
-    setLog(prev => [`📜 Event: ${choice.text}`, ...prev]);
-  };
-
-  const executeAction = () => {
-    if (!player || !action) return;
-    const p = { ...player };
-    let msg = '';
-    const costMult = p.varna === 'vaishya' ? 0.6 : 1;
-
-    if (action === 'develop') {
-      const cost = Math.floor(50 * costMult);
-      if (p.gold < cost) return notify('Not enough gold!', 'error');
-      p.gold -= cost; p.food += 100; p.manpower += 200;
-      msg = `🛠️ Developed realm for ${cost} gold.`;
-    } else if (action === 'recruit') {
-      if (p.gold < 80 || p.manpower < 300) return notify('Insufficient resources!', 'error');
-      p.gold -= 80; p.manpower -= 300; p.militaryStrength += 600;
-      msg = `⚔️ Levied 600 soldiers.`;
-    } else if (action === 'diplomacy' && targetId) {
-      if (p.gold < 50) return notify('Need 50 gold!', 'error');
-      p.gold -= 50; p.relations[targetId] = (p.relations[targetId] || 0) + 15;
-      msg = `🤝 Improved relations with ${factions.find(f => f.id === targetId).name}`;
-    } else if (action === 'war' && targetId) {
-      if (p.atWar.includes(targetId)) return;
-      p.atWar.push(targetId); p.relations[targetId] = -100;
-      msg = `⚔️ Declared WAR on ${factions.find(f => f.id === targetId).name}!`;
-    } else if (action === 'peace' && targetId) {
-      if (p.gold < 100) return notify('Need 100 gold!', 'error');
-      p.gold -= 100; p.atWar = p.atWar.filter(id => id !== targetId);
-      msg = `🕊️ Signed peace treaty with ${factions.find(f => f.id === targetId).name}`;
-    }
-
-    setPlayer(p); setAction(null); setTargetId(null);
-    if (msg) setLog(prev => [msg, ...prev]);
   };
 
   /* ─── MENU ─────────────────────────────────────────────────────────── */
