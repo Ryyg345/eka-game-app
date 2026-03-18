@@ -814,6 +814,20 @@ function MandalaOfKings() {
             }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
               FOUND DYNASTY
             </button>
+            <button onClick={() => setScreen('howtoplay')} style={{ 
+              padding: isMobile ? '0.8rem 1.5rem' : '1.1rem 2.8rem', 
+              fontSize: isMobile ? '0.9rem' : '1.1rem', 
+              fontWeight: 'bold', 
+              background: 'rgba(255,255,255,0.05)', 
+              color: '#fbbf24', 
+              border: '1px solid rgba(217,119,6,0.5)', 
+              borderRadius: '0.8rem', 
+              cursor: 'pointer', 
+              transition: 'all 0.2s',
+              letterSpacing: '0.05em'
+            }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+              HOW TO PLAY
+            </button>
           </div>
         </div>
       </div>
