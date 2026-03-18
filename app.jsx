@@ -387,8 +387,15 @@ function MandalaOfKings() {
     if (e.prestige) setPrestige(v => v + e.prestige);
     if (e.culture) setCulture(v => v + e.culture);
     if (e.war_chance && Math.random() < e.war_chance) {
-      const enemy = factions.find(f => !f.isPlayer && !f.atWar.includes(p.id) && f.territories > 0);
-      if (enemy) { p.atWar = [...p.atWar, enemy.id]; enemy.atWar = [...enemy.atWar, p.id]; addLog(`⚔️ ${enemy.name} declares war!`); }
+      // Prioritize enemies with lowest relations, exclude those with high relations (>80)
+      const potentialEnemies = factions.filter(f => !f.isPlayer && !f.atWar.includes(p.id) && f.regionIds.length > 0 && (p.relations[f.id] || 0) < 80);
+      if (potentialEnemies.length) {
+        // Pick the one with the lowest relations
+        const enemy = potentialEnemies.reduce((prev, curr) => (p.relations[prev.id] || 0) < (p.relations[curr.id] || 0) ? prev : curr);
+        p.atWar = [...p.atWar, enemy.id]; enemy.atWar = [...enemy.atWar, p.id]; 
+        notify(`⚔️ Aggression: The ${enemy.name} Dynasty has declared war citing past grievances!`, 'error');
+        addLog(`⚔️ ${enemy.name} declares war!`);
+      }
     }
     if (e.duel) {
       if (Math.random() > 0.4) { setPrestige(v => v + 20); addLog('🏆 You won the duel! +20 prestige'); }
@@ -485,7 +492,19 @@ function MandalaOfKings() {
 
     // DIFFICULTY INCOME SCALING
     if (difficulty === 'easy') { goldIncome = Math.floor(goldIncome * 1.2); foodIncome = Math.floor(foodIncome * 1.2); }
-    else if (difficulty === 'difficult') { goldIncome = Math.floor(goldIncome * 0.85); foodIncome = Math.floor(foodIncome * 0.85); }
+    else if (difficulty === 'difficult') { goldIncome = Math.floor(goldIncome * 0.85); foodIncome = Math.floor(goldIncome * 0.85); }
+
+    // DIPLOMATIC BENEFITS (Trade & Stability)
+    const others = factions.filter(f => !f.isPlayer && f.regionIds.length > 0);
+    const allies = others.filter(f => (p.relations[f.id] || 0) > 60);
+    const tradeBonus = allies.length * 15;
+    if (tradeBonus > 0) {
+      goldIncome += tradeBonus;
+      localAddLog(`💰 Silk Road: +${tradeBonus} gold from peaceful trade`);
+    }
+    if (p.atWar.length === 0) {
+      p.stability = Math.min(100, p.stability + 2);
+    }
 
     p.gold += goldIncome;
     p.food += foodIncome;
