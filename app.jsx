@@ -212,6 +212,11 @@ const DYNASTY_REGIONS = {
 const makeChar = (dynasty, isSelf) => ({
   name: rndName(dynasty),
   traits: isSelf ? [pick(TRAITS), pick(TRAITS)] : [pick(TRAITS)],
+  xp: 0,
+  level: 1,
+  perks: [],
+  tenure: 0,
+  maxTenure: rnd(15, 30) // Years until succession
 });
 
 const makeFaction = (index, isPlayer = false) => {
@@ -225,6 +230,12 @@ const makeFaction = (index, isPlayer = false) => {
   };
 };
 
+const PERKS = [
+  { id: 'statecraft', name: 'Arthaśāstra Mastery', desc: 'Cheaper development (-20 Gold) and +10% Gold income.', icon: '💰' },
+  { id: 'warfare', name: 'Dhanurveda Wisdom', desc: '+20% Battle Modifier and +100 Military Strength/turn.', icon: '⚔️' },
+  { id: 'dharma', name: 'Dharmic Order', desc: '+5 Stability per turn and reduced revolt risk.', icon: '⚖️' }
+];
+
 const calcLegacy = (p, culture, prestige, years) =>
   p ? Math.floor((p.regionIds?.length || 0) * 100 + (p.gold || 0) * 0.5 + culture * 10 + prestige * 5 + years * 2) : 0;
 
@@ -237,6 +248,10 @@ function MandalaOfKings() {
   const [culture, setCulture] = useState(10);
   const [prestige, setPrestige] = useState(20);
   const [difficulty, setDifficulty] = useState('normal'); // 'easy', 'normal', 'difficult'
+
+  // --- Progression & Succession States ---
+  const [perkPrompt, setPerkPrompt] = useState(false);
+  const [successionData, setSuccessionData] = useState(null);
 
   // --- Auto-Save System ---
   const performSave = () => {
@@ -420,17 +435,25 @@ function MandalaOfKings() {
   const executeAction = () => {
     if (!action || !player) return;
     const hasTrait = (tid) => player.ruler.traits.some(t => t.id === tid);
+    const hasPerk = (pid) => player.ruler.perks.includes(pid);
+    
     let p = { ...player };
     let fs = [...factions];
+    
+    // XP Gain for taking action
+    p.ruler.xp += 40;
+
     if (action === 'develop') {
-      if (p.gold < 50) { notify('❌ Insufficient Treasury: Need 50 Gold to develop regions.', 'error'); return; }
-      p.gold -= 50; p.food += 30; p.manpower += 100;
+      const cost = hasPerk('statecraft') ? 30 : 50;
+      if (p.gold < cost) { notify(`❌ Insufficient Treasury: Need ${cost} Gold to develop regions.`, 'error'); return; }
+      p.gold -= cost; p.food += 30; p.manpower += 100;
       notify('📈 Development complete: Infrastructure improved across your realms!', 'success');
       addLog('📈 Realm developed: +30 food, +100 manpower');
     }
     if (action === 'recruit') {
-      if (p.gold < 80 || p.manpower < 200) { notify('❌ Insufficient Resources: Recruitment requires 80 Gold and 200 Manpower.', 'error'); return; }
-      p.gold -= 80; p.manpower -= 200; p.militaryStrength += 500;
+      const cost = hasPerk('warfare') ? 60 : 80;
+      if (p.gold < cost || p.manpower < 200) { notify(`❌ Insufficient Resources: Recruitment requires ${cost} Gold and 200 Manpower.`, 'error'); return; }
+      p.gold -= cost; p.manpower -= 200; p.militaryStrength += 500;
       notify('⚔️ Levies raised: Your military strength has grown by 500!', 'success');
       addLog('⚔️ Army recruited: +500 military strength');
     }
@@ -491,14 +514,45 @@ function MandalaOfKings() {
 
     const p = { ...player };
     const hasTrait = (tid) => p.ruler.traits.some(t => t.id === tid);
+    const hasPerk = (pid) => p.ruler.perks.includes(pid);
+
+    // --- Progression & Succession ---
+    if (nm === 1) { // Annual checks
+      p.ruler.tenure += 1;
+      p.ruler.xp += 50; // XP for ruling
+    }
+
+    // Level Up Check
+    const xpNeeded = p.ruler.level * 200;
+    if (p.ruler.xp >= xpNeeded) {
+      p.ruler.level += 1;
+      p.ruler.xp -= xpNeeded;
+      setPerkPrompt(true);
+      notify(`📜 Enlightenment: ${p.ruler.name} has reached Level ${p.ruler.level}!`, 'success');
+    }
+
+    // Succession Check
+    if (p.ruler.tenure >= p.ruler.maxTenure) {
+      const old = { ...p.ruler };
+      const dynasty = p.name;
+      const newRuler = makeChar(dynasty, true);
+      newRuler.level = Math.max(1, Math.floor(old.level / 2)); // Inherit half power
+      p.ruler = newRuler;
+      p.stability = Math.max(20, p.stability - 25); // Destabilizing
+      setSuccessionData({ old, new: newRuler, score: calcLegacy(p, culture, prestige, old.tenure) });
+      localAddLog(`👑 Throne Transition: ${old.name} has passed. Long live ${newRuler.name}!`);
+    }
+
     let goldIncome = p.regionIds.length * 20 + rnd(-10, 20);
     let foodIncome = p.regionIds.length * 15 + rnd(-5, 15);
     let manpowerGrowth = Math.floor(p.regionIds.length * 5 * (p.stability / 100));
 
-    if (hasTrait('administrator')) { goldIncome = Math.floor(goldIncome * 1.1); foodIncome = Math.floor(foodIncome * 1.1); }
+    // Traits & Perks
+    if (hasTrait('administrator') || hasPerk('statecraft')) { goldIncome = Math.floor(goldIncome * 1.15); foodIncome = Math.floor(foodIncome * 1.15); }
     if (hasTrait('ambitious')) { setPrestige(v => v + 5); p.stability = Math.max(0, p.stability - 5); localAddLog('⭐ Mahotsāha: +5 Prestige, -5 Stability'); }
     if (hasTrait('patron')) { setCulture(v => v + 2); localAddLog('📜 Vidyāvinodī: +2 Culture'); }
     if (hasTrait('pious')) p.stability = Math.min(100, p.stability + 2);
+    if (hasPerk('dharma')) p.stability = Math.min(100, p.stability + 5);
 
     // DIFFICULTY INCOME SCALING
     if (difficulty === 'easy') { goldIncome = Math.floor(goldIncome * 1.2); foodIncome = Math.floor(foodIncome * 1.2); }
@@ -529,7 +583,7 @@ function MandalaOfKings() {
           notify(`🔥 Rebellion: Low stability has led to a revolt in ${rName}!`, 'error');
           localAddLog(`🔥 Revolt! Lost ${rName} due to low stability`);
           // Region is seized by a random neighbor if possible
-          const potentialSeizers = updatedFactions.filter(f => !f.isPlayer && f.regionIds.length > 0 && REGIONS.find(r => r.id === lose).neighbors.some(nb => f.regionIds.includes(nb)));
+          const potentialSeizers = factions.filter(f => !f.isPlayer && f.regionIds.length > 0 && REGIONS.find(r => r.id === lose).neighbors.some(nb => f.regionIds.includes(nb)));
           if (potentialSeizers.length) pick(potentialSeizers).regionIds.push(lose);
         }
       }
@@ -548,6 +602,7 @@ function MandalaOfKings() {
       if (hasTrait('strategist')) pMod += 0.15;
       if (hasTrait('ruthless')) pMod += 0.2;
       if (hasTrait('cunning')) pMod += 0.05;
+      if (hasPerk('warfare')) pMod += 0.25;
 
       // DIFFICULTY BATTLE MODIFIER
       if (difficulty === 'easy') pMod += 0.1;
@@ -603,7 +658,7 @@ function MandalaOfKings() {
     const summary = [
       `💰 Economy: +${goldIncome} Gold, +${foodIncome} Food`,
       `👥 Growth: +${manpowerGrowth} Manpower`,
-      ...turnLogs
+      `👑 Ruler: ${p.ruler.name} (Level ${p.ruler.level})`
     ];
     setTurnSummary(summary);
 
@@ -1057,8 +1112,25 @@ function MandalaOfKings() {
               <h1 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', background: 'linear-gradient(to right, #fef3c7, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{player?.name} Dynasty</h1>
               <div style={{ display: 'flex', gap: isMobile ? '0.75rem' : '1.5rem', color: '#fbbf24', fontSize: isMobile ? '0.75rem' : '0.95rem', marginTop: '0.4rem', fontWeight: '600', letterSpacing: '0.05em', flexWrap: 'wrap' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ opacity: 0.8 }}>👑</span> {player?.ruler.name}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span style={{ opacity: 0.9, color: '#fbbf24', fontSize: '0.8rem', fontWeight: '900' }}>LVL {player?.ruler.level}</span>
+                  <div style={{ width: '60px', height: '6px', background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'hidden', border: '1px solid rgba(251,191,36,0.2)' }}>
+                    <div style={{ height: '100%', background: 'linear-gradient(to right, #d97706, #fbbf24)', width: `${(player?.ruler.xp / (player?.ruler.level * 200)) * 100}%`, transition: 'width 0.5s ease' }} />
+                  </div>
+                </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ opacity: 0.8 }}>📅</span> {month}/{year} CE</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ opacity: 0.8 }}>🏛️</span> {player?.regionIds.length} Realms</span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                {player?.ruler.perks.map(pid => {
+                    const pk = PERKS.find(p => p.id === pid);
+                    return (
+                      <div key={pid} style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24', borderRadius: '4px', padding: '0.2rem 0.5rem', fontSize: '0.65rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                        <span>{pk?.icon}</span>
+                        <span>{pk?.name.toUpperCase()}</span>
+                      </div>
+                    );
+                })}
               </div>
             </div>
             <div style={{ textAlign: isMobile ? 'left' : 'right', display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'stretch' : 'flex-end', gap: '0.5rem' }}>
@@ -1421,7 +1493,59 @@ function MandalaOfKings() {
             </div>
           )}
 
-          {/* Exit Confirmation Overlay */}
+          {/* Perk Unlock Overlay */}
+          {perkPrompt && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+              <div style={{ ...cardStyle, maxWidth: '40rem', width: '100%', padding: isMobile ? '1.5rem' : '3rem', textAlign: 'center', border: '2px solid #fbbf24', background: 'radial-gradient(circle at top, #4c1d95, #1e1b4b)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✨</div>
+                <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.5rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '0.5rem', fontFamily: 'Georgia,serif' }}>Enlightened Wisdom</h2>
+                <p style={{ color: '#ddd6fe', marginBottom: '2.5rem', fontSize: '1.1rem' }}>{player?.ruler.name} has ascended. Select a permanent focus for your reign.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem' }}>
+                  {PERKS.map(p => (
+                    <button 
+                      key={p.id} 
+                      onClick={() => {
+                        const nextP = { ...player };
+                        nextP.ruler.perks = [...nextP.ruler.perks, p.id];
+                        setPlayer(nextP);
+                        setPerkPrompt(false);
+                      }}
+                      style={{ padding: '1.5rem 1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: '1rem', color: 'white', cursor: 'pointer', transition: 'all 0.3s' }}
+                    >
+                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>{p.icon}</div>
+                      <div style={{ fontWeight: 'bold', color: '#fbbf24', fontSize: '1rem', marginBottom: '0.5rem' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.75rem', opacity: 0.8, lineHeight: '1.4' }}>{p.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Succession Overlay */}
+          {successionData && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(15px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '2rem' }}>
+              <div style={{ ...cardStyle, maxWidth: '32rem', width: '100%', padding: '3rem', textAlign: 'center', border: '1px solid #fbbf24', background: 'linear-gradient(180deg, #1e1b4b 0%, #000 100%)' }}>
+                <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🪔</div>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '1rem', fontFamily: 'Georgia,serif' }}>Generational Passing</h2>
+                <p style={{ color: '#fef3c7', fontSize: '1.1rem', marginBottom: '2rem', lineHeight: '1.6' }}>
+                  The reign of <strong>{successionData.old.name}</strong> has ended after {successionData.old.tenure} years. 
+                  Final Legacy: <strong>{successionData.score}</strong>.
+                </p>
+                <div style={{ background: 'rgba(251,191,36,0.1)', padding: '1.5rem', borderRadius: '1rem', marginBottom: '2.5rem', border: '1px dashed #fbbf24' }}>
+                  <div style={{ color: '#fbbf24', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>THE HEIR ASCENDS</div>
+                  <div style={{ fontSize: '1.5rem', color: 'white', fontWeight: 'bold' }}>{successionData.new.name}</div>
+                  <div style={{ fontSize: '0.9rem', color: 'rgba(254,243,199,0.7)', marginTop: '0.2rem' }}>Level {successionData.new.level} dynastic successor</div>
+                </div>
+                <button 
+                  onClick={() => setSuccessionData(null)}
+                  style={{ width: '100%', padding: '1.25rem', background: 'linear-gradient(to right, #d97706, #fbbf24)', color: '#451a03', fontWeight: 'bold', border: 'none', borderRadius: '0.8rem', cursor: 'pointer', fontSize: '1.1rem' }}
+                >
+                  LONG LIVE THE KING →
+                </button>
+              </div>
+            </div>
+          )}
           {showExitConfirm && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
               <div style={{ ...cardStyle, maxWidth: '28rem', width: '100%', padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(239,68,68,0.5)' }}>
