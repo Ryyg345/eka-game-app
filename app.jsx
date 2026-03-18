@@ -11,51 +11,24 @@ const Calendar = ({ className }) => (<svg className={className} viewBox="0 0 24 
 const Award = ({ className }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7" /><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" /></svg>);
 
 const DYNASTY_DATA = {
-  'Chalukya': {
-    male: ['Pulakeshin', 'Vikramaditya', 'Vinayaditya', 'Vijayaditya', 'Somesvara', 'Tailapa'],
-    female: ['Akkadevi', 'Jakalladevi', 'Kumkumadevi', 'Lokamahadevi']
-  },
-  'Pallava': {
-    male: ['Simhavishnu', 'Mahendravarman', 'Narasimhavarman', 'Paramesvaravarman', 'Nandivarman', 'Dantivarman'],
-    female: ['Rangapataka', 'Rajasimha-Mahadevi', 'Charudevi']
-  },
-  'Rashtrakuta': {
-    male: ['Dantidurga', 'Krishna', 'Dhruva', 'Govinda', 'Amoghavarsha', 'Indra', 'Khoṭṭiga'],
-    female: ['Chandrobebba', 'Revakanimmadi', 'Abbalabbe']
-  },
-  'Pratihara': {
-    male: ['Nagabhata', 'Vatsaraja', 'Mihira Bhoja', 'Mahendrapala', 'Mahipala', 'Rajapala'],
-    female: ['Nirmaladevi', 'Mahalakshmi', 'Kanchana']
-  },
-  'Pala': {
-    male: ['Gopala', 'Dharmapala', 'Devapala', 'Narayanapala', 'Mahipala', 'Nayapala'],
-    female: ['Deddadevi', 'Rannadevi', 'Bhagyadevi']
-  },
-  'Chola': {
-    male: ['Vijayalaya', 'Aditya', 'Parantaka', 'Gandaraditya', 'Sundara', 'Rajaraja', 'Rajendra'],
-    female: ['Kundavai', 'Sembiyan Mahadevi', 'Vanavan Mahadevi', 'Viramahadevi']
-  },
-  'Pandya': {
-    male: ['Kadungon', 'Arikesari', 'Maravarman', 'Varaguna', 'Srimara', 'Jatila'],
-    female: ['Meenakshi', 'Mangayarkkarasi', 'Sembiyan']
-  },
-  'Chera': {
-    male: ['Kulasekhara', 'Rajasekhara', 'Sthanu Ravi', 'Rama Varma', 'Godha Varma'],
-    female: ['Phullanubhuti', 'Kottai']
-  },
-  'Kashmir': {
-    male: ['Lalitaditya', 'Jayapida', 'Avantivarman', 'Sankaravarman', 'Unmattavanti'],
-    female: ['Didda', 'Sugandha', 'Kota Rani']
-  },
-  'Chandela': {
-    male: ['Nannuka', 'Jeja', 'Dhanga', 'Ganda', 'Vidyadhara', 'Vijayapala'],
-    female: ['Durgavati', 'Satyavati']
-  },
-  'Paramara': {
-    male: ['Upendra', 'Siyaka', 'Munja', 'Bhoja', 'Sindhuraja', 'Udayaditya'],
-    female: ['Mrinalvati', 'Malayamati']
-  }
+  'Chalukya': { male: ['Pulakeshin', 'Vikramaditya', 'Vinayaditya'], female: ['Akkadevi', 'Jakalladevi'], varna: 'kshatriya' },
+  'Pallava': { male: ['Simhavishnu', 'Mahendravarman', 'Narasimhavarman'], female: ['Rangapataka', 'Charudevi'], varna: 'kshatriya' },
+  'Rashtrakuta': { male: ['Dantidurga', 'Krishna', 'Dhruva'], female: ['Chandrobebba', 'Abbalabbe'], varna: 'kshatriya' },
+  'Pratihara': { male: ['Nagabhata', 'Vatsaraja', 'Mihira Bhoja'], female: ['Nirmaladevi', 'Kanchana'], varna: 'kshatriya' },
+  'Pala': { male: ['Gopala', 'Dharmapala', 'Devapala'], female: ['Deddadevi', 'Bhagyadevi'], varna: 'brahmin' }, // Buddhist/Scholarly focus
+  'Chola': { male: ['Vijayalaya', 'Aditya', 'Rajaraja'], female: ['Kundavai', 'Sembiyan'], varna: 'kshatriya' },
+  'Pandya': { male: ['Kadungon', 'Arikesari', 'Varaguna'], female: ['Meenakshi', 'Mangayarkkarasi'], varna: 'kshatriya' },
+  'Chera': { male: ['Kulasekhara', 'Sthanu Ravi', 'Godha Varma'], female: ['Phullanubhuti'], varna: 'vaishya' }, // Maritime Trade focus
+  'Kashmir': { male: ['Lalitaditya', 'Avantivarman', 'Sankaravarman'], female: ['Didda', 'Sugandha'], varna: 'brahmin' },
+  'Chandela': { male: ['Nannuka', 'Dhanga', 'Vidyadhara'], female: ['Durgavati'], varna: 'kshatriya' },
+  'Paramara': { male: ['Upendra', 'Bhoja', 'Sindhuraja'], female: ['Mrinalvati'], varna: 'kshatriya' }
 };
+
+const VARNAS = [
+  { id: 'brahmin', name: 'Brahmin (Vidhwat)', icon: '🕉️', bonus: 'Culture & Wisdom', desc: 'Masters of lore: +20% Culture and +2 Stability each turn.' },
+  { id: 'kshatriya', name: 'Kshatriya (Rājanya)', icon: '⚔️', bonus: 'Might & Conquest', desc: 'Masters of war: +200 Military Strength and +10% Battle Power.' },
+  { id: 'vaishya', name: 'Vaishya (Vanij)', icon: '💰', bonus: 'Wealth & Prosperity', desc: 'Masters of coin: +20% Gold income and -20 Gold to construction.' }
+];
 
 const DYNASTY_NAMES = Object.keys(DYNASTY_DATA);
 const TRAITS = [
@@ -225,16 +198,23 @@ const makeChar = (dynasty, isSelf, rIdx = 0) => {
   };
 };
 
-const makeFaction = (index, isPlayer = false) => {
-  const dName = DYNASTY_NAMES[index];
-  return {
+const makeFaction = (index, isPlayer = false, customData = null) => {
+  const dName = customData ? customData.name : DYNASTY_NAMES[index];
+  const dVarna = customData ? customData.varna : (DYNASTY_DATA[dName]?.varna || 'kshatriya');
+  const dRulerName = customData ? customData.rulerName : null;
+  
+  const faction = {
     id: index, name: dName,
+    varna: dVarna,
     rulerIndex: 0,
     ruler: makeChar(dName, isPlayer, 0),
-    gold: rnd(100, 300), food: rnd(150, 400),
-    regionIds: [], manpower: 1000, stability: rnd(40, 80),
+    gold: rnd(150, 300), food: rnd(150, 400),
+    regionIds: [], manpower: 1000, stability: rnd(60, 80),
     militaryStrength: 2000, relations: {}, atWar: [], isPlayer
   };
+
+  if (dRulerName) faction.ruler.name = dRulerName;
+  return faction;
 };
 
 const PERKS = [
@@ -381,19 +361,6 @@ function MandalaOfKings() {
       // Secondary difficulty scaling for player after region calculation
       if (f.isPlayer) {
         if (difficulty === 'easy') { f.militaryStrength = Math.floor(f.militaryStrength * 1.2); }
-        else if (difficulty === 'difficult') { f.militaryStrength = Math.floor(f.militaryStrength * 0.8); }
-      }
-    });
-
-    fs.forEach(f => fs.forEach(o => { 
-      if (f.id !== o.id) {
-        f.relations[o.id] = rnd(-50, 50);
-        if (f.isPlayer && difficulty === 'easy') f.relations[o.id] += 20;
-      }
-    }));
-
-    setFactions(fs);
-    setPlayer(fs[0]);
     setMonth(1);
     setYear(600);
     setCulture(difficulty === 'easy' ? 20 : 10);
@@ -599,91 +566,110 @@ function MandalaOfKings() {
       }
     }
 
+    // VARNA BONUSES
+    if (p.varna === 'brahmin') { setCulture(v => v + 5); p.stability = Math.min(100, p.stability + 2); localAddLog('🕉️ Vidhwat: +5 Culture, +2 Stability'); }
+    if (p.varna === 'kshatriya') { p.militaryStrength += 200; localAddLog('⚔️ Rājanya: +200 Military Strength'); }
+    if (p.varna === 'vaishya') { goldIncome = Math.floor(goldIncome * 1.2); localAddLog('💰 Vanij: +20% Gold Income'); }
+
     p.gold += goldIncome;
     p.food += foodIncome;
     p.manpower += manpowerGrowth;
     p.food -= p.manpower / 50;
 
-    let updatedFactions = factions.map(f => {
-      if (f.id === 0) return p;
+    let updatedFactions = fs.map(f => {
+      if (f.id === p.id) return p;
       if (!p.atWar.includes(f.id)) return f;
 
       let pMod = 1 + Math.random() * 0.5;
+      if (p.varna === 'kshatriya') pMod += 0.1; // Varna Battle Bonus
       if (hasTrait('strategist')) pMod += 0.15;
       if (hasTrait('ruthless')) pMod += 0.2;
-      if (hasTrait('cunning')) pMod += 0.05;
       if (hasPerk('warfare')) pMod += 0.25;
-
-      // DIFFICULTY BATTLE MODIFIER
-      if (difficulty === 'easy') pMod += 0.1;
-      else if (difficulty === 'difficult') pMod -= 0.1;
 
       const pp = p.militaryStrength * pMod;
       const ep = f.militaryStrength * (1 + Math.random() * 0.5);
       const enemy = { ...f };
 
       if (pp > ep * 1.3) {
-        // Find border regions
-        const targetRegions = enemy.regionIds.filter(erid =>
-          REGIONS.find(r => r.id === erid).neighbors.some(nb => p.regionIds.includes(nb))
-        );
-
+        const targetRegions = enemy.regionIds.filter(erid => REGIONS.find(r => r.id === erid).neighbors.some(nb => p.regionIds.includes(nb)));
         if (targetRegions.length) {
           const gain = pick(targetRegions);
           p.regionIds.push(gain);
-          enemy.regionIds = enemy.regionIds.filter(rid => rid !== gain);
-          p.militaryStrength -= rnd(100, 300);
-          enemy.militaryStrength -= rnd(200, 500);
+          enemy.regionIds = enemy.regionIds.filter(id => id !== gain);
+          p.militaryStrength -= rnd(100, 300); enemy.militaryStrength -= rnd(200, 500);
           setPrestige(v => v + 15);
           localAddLog(`⚔️ Victory vs ${enemy.name}! Captured ${REGIONS.find(r => r.id === gain).name}`);
-          if (enemy.regionIds.length === 0) { p.atWar = p.atWar.filter(id => id !== enemy.id); localAddLog(`🏆 ${enemy.name} has fallen!`); }
         }
       } else if (ep > pp * 1.3) {
-        const targetRegions = p.regionIds.filter(prid =>
-          REGIONS.find(r => r.id === prid).neighbors.some(nb => enemy.regionIds.includes(nb))
-        );
+        const targetRegions = p.regionIds.filter(prid => REGIONS.find(r => r.id === prid).neighbors.some(nb => enemy.regionIds.includes(nb)));
         if (targetRegions.length) {
           const lose = pick(targetRegions);
           enemy.regionIds.push(lose);
-          p.regionIds = p.regionIds.filter(rid => rid !== lose);
-          p.militaryStrength -= rnd(200, 500);
-          enemy.militaryStrength -= rnd(100, 300);
-          setPrestige(v => Math.max(0, v - 10));
+          p.regionIds = p.regionIds.filter(id => id !== lose);
+          p.militaryStrength -= rnd(300, 600); enemy.militaryStrength -= rnd(100, 300);
+          setPrestige(v => Math.max(0, v - 15));
           localAddLog(`💔 Defeat vs ${enemy.name}! Lost ${REGIONS.find(r => r.id === lose).name}`);
         }
-      } else {
-        p.militaryStrength -= rnd(50, 150);
-        enemy.militaryStrength -= rnd(50, 150);
-        localAddLog(`⚔️ Stalemate with ${enemy.name}`);
       }
       return enemy;
     });
 
     setFactions(updatedFactions); setPlayer(p);
-
-    // Re-sync basic territory count
-    p.territories = p.regionIds.length;
-    updatedFactions.forEach(f => f.territories = f.regionIds.length);
-
-    const summary = [
-      `💰 Economy: +${goldIncome} Gold, +${foodIncome} Food`,
-      `👥 Growth: +${manpowerGrowth} Manpower`,
-      `👑 Ruler: ${p.ruler.name} (Level ${p.ruler.level})`
-    ];
-    setTurnSummary(summary);
+    setTurnSummary([`💰 Income: +${goldIncome}G, +${foodIncome}F`, `👥 Manpower: +${manpowerGrowth}`, `👑 Ruler: ${p.ruler.name}`]);
 
     const alive = updatedFactions.filter(f => !f.isPlayer && f.regionIds.length > 0);
-    if (!victoryPrompt) {
-      if (alive.length === 0) { setVictoryType('conquest'); setVictoryPrompt(true); return; }
-      if (culture >= 2000) { setVictoryType('cultural'); setVictoryPrompt(true); return; }
-      if (prestige >= 2500) { setVictoryType('prestige'); setVictoryPrompt(true); return; }
-    }
-    if (p.regionIds.length <= 0) { setScreen('ended'); return; }
-    if (ny >= 1000) { setScreen('ended'); return; }
+    if (alive.length === 0) { setVictoryType('conquest'); setScreen('victory'); }
+    else if (culture >= 2000) { setVictoryType('cultural'); setScreen('victory'); }
+    else if (prestige >= 2500) { setVictoryType('prestige'); setScreen('victory'); }
+    else if (p.regionIds.length <= 0) { setScreen('ended'); }
     
-    // DIFFICULTY EVENT PROBABILITY
-    const eventChance = difficulty === 'difficult' ? 0.85 : (difficulty === 'easy' ? 0.6 : 0.7);
-    if (Math.random() < eventChance) setEvent(pick(EVENTS));
+    if (Math.random() < 0.7) setEvent(pick(EVENTS));
+  };
+
+  const handleEvent = (choice) => {
+    if (!player) return;
+    const p = { ...player };
+    const e = choice.effect;
+    if (e.gold) p.gold += e.gold;
+    if (e.food) p.food += e.food;
+    if (e.stability) p.stability = Math.min(100, Math.max(0, p.stability + e.stability));
+    if (e.culture) setCulture(v => v + e.culture);
+    if (e.prestige) setPrestige(v => v + e.prestige);
+    setPlayer(p); setEvent(null);
+    setLog(prev => [`📜 Event: ${choice.text}`, ...prev]);
+  };
+
+  const executeAction = () => {
+    if (!player || !action) return;
+    const p = { ...player };
+    let msg = '';
+    const costMult = p.varna === 'vaishya' ? 0.6 : 1;
+
+    if (action === 'develop') {
+      const cost = Math.floor(50 * costMult);
+      if (p.gold < cost) return notify('Not enough gold!', 'error');
+      p.gold -= cost; p.food += 100; p.manpower += 200;
+      msg = `🛠️ Developed realm for ${cost} gold.`;
+    } else if (action === 'recruit') {
+      if (p.gold < 80 || p.manpower < 300) return notify('Insufficient resources!', 'error');
+      p.gold -= 80; p.manpower -= 300; p.militaryStrength += 600;
+      msg = `⚔️ Levied 600 soldiers.`;
+    } else if (action === 'diplomacy' && targetId) {
+      if (p.gold < 50) return notify('Need 50 gold!', 'error');
+      p.gold -= 50; p.relations[targetId] = (p.relations[targetId] || 0) + 15;
+      msg = `🤝 Improved relations with ${factions.find(f => f.id === targetId).name}`;
+    } else if (action === 'war' && targetId) {
+      if (p.atWar.includes(targetId)) return;
+      p.atWar.push(targetId); p.relations[targetId] = -100;
+      msg = `⚔️ Declared WAR on ${factions.find(f => f.id === targetId).name}!`;
+    } else if (action === 'peace' && targetId) {
+      if (p.gold < 100) return notify('Need 100 gold!', 'error');
+      p.gold -= 100; p.atWar = p.atWar.filter(id => id !== targetId);
+      msg = `🕊️ Signed peace treaty with ${factions.find(f => f.id === targetId).name}`;
+    }
+
+    setPlayer(p); setAction(null); setTargetId(null);
+    if (msg) setLog(prev => [msg, ...prev]);
   };
 
   /* ─── MENU ─────────────────────────────────────────────────────────── */
@@ -877,8 +863,34 @@ function MandalaOfKings() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '280px' : '320px'}, 1fr))`, gap: isMobile ? '1rem' : '2rem', marginBottom: '4rem' }}>
+            {/* Custom Dynasty Card */}
+            <div 
+              onClick={() => setScreen('custom_setup')}
+              style={{
+                background: 'rgba(251,191,36,0.05)',
+                backdropFilter: 'blur(15px)',
+                border: '2px dashed rgba(251,191,36,0.5)',
+                borderRadius: '1.25rem',
+                padding: '2rem',
+                cursor: 'pointer',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(251,191,36,0.1)'; e.currentTarget.style.borderColor = '#fbbf24'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(251,191,36,0.05)'; e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)'; }}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✍️</div>
+              <h3 style={{ fontSize: '1.5rem', color: '#fbbf24', fontWeight: 'bold' }}>Forge Custom Lineage</h3>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(254,243,199,0.6)', marginTop: '0.5rem' }}>Define your own name, varna, and capital.</p>
+            </div>
+
             {DYNASTY_NAMES.map((name, idx) => {
               const data = DYNASTY_DATA[name];
+              const dv = VARNAS.find(v => v.id === data.varna) || VARNAS[1];
               return (
                 <div key={name}
                   onClick={() => startGame(idx)}
@@ -906,15 +918,14 @@ function MandalaOfKings() {
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '1rem', fontSize: '2rem', opacity: 0.1 }}>🔱</div>
+                  <div style={{ position: 'absolute', top: 0, right: 0, padding: '1rem', fontSize: '2rem', opacity: 0.1 }}>{dv.icon}</div>
                   <h3 style={{ fontSize: '1.75rem', color: '#fbbf24', marginBottom: '1rem', fontFamily: 'Georgia,serif' }}>{name}</h3>
+                  <div style={{ fontSize: '0.9rem', color: '#fbbf24', marginBottom: '0.5rem', fontWeight: 'bold' }}>{dv.name}</div>
                   <div style={{ fontSize: '0.95rem', color: 'rgba(254,243,199,0.7)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
-                    <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Notable Rulers</span><br />
-                    {data.male.slice(0, 3).join(', ')}
+                    {data.male.slice(0, 2).join(', ')}...
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <span style={{ background: 'rgba(217,119,6,0.1)', color: '#fbbf24', padding: '0.3rem 0.75rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.05em', border: '1px solid rgba(217,119,6,0.2)' }}>HISTORICAL</span>
-                    <span style={{ background: 'rgba(124,58,237,0.1)', color: '#c084fc', padding: '0.3rem 0.75rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.05em', border: '1px solid rgba(124,58,237,0.2)' }}>MAJOR CLAN</span>
+                    <span style={{ background: 'rgba(217,119,6,0.1)', color: '#fbbf24', padding: '0.3rem 0.75rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 'bold' }}>HISTORICAL</span>
                   </div>
                 </div>
               );
@@ -925,6 +936,95 @@ function MandalaOfKings() {
             <button onClick={() => setScreen('menu')} style={{ background: 'transparent', border: 'none', color: '#fbbf24', textDecoration: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: '600', transition: 'opacity 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.opacity = 0.8} onMouseLeave={(e) => e.currentTarget.style.opacity = 1}>
               ← Return to Imperial Court
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── CUSTOM DYNASTY SETUP ────────────────────────────────────────── */
+  if (screen === 'custom_setup') {
+    const [cName, setCName] = useState('New');
+    const [cRuler, setCRuler] = useState('Ruler');
+    const [cVarna, setCVarna] = useState('kshatriya');
+    const [cCapital, setCCapital] = useState('indraprastha');
+
+    const cardStyle = {
+      background: 'rgba(0,0,0,0.4)',
+      backdropFilter: 'blur(20px)',
+      border: '1px solid rgba(251,191,36,0.3)',
+      borderRadius: '1.5rem',
+      padding: isMobile ? '1.5rem' : '2.5rem',
+      boxShadow: '0 25px 60px rgba(0,0,0,0.6)'
+    };
+
+    return (
+      <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at center, #4c1d95 0%, #0c0a09 100%)', padding: '2rem 1rem', color: '#fef3c7', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '40rem', margin: '0 auto' }}>
+          <h1 style={{ textAlign: 'center', fontSize: '2.5rem', fontFamily: 'Georgia,serif', color: '#fbbf24', marginBottom: '2rem' }}>Forge Your Sacred Lineage</h1>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Identity Card */}
+            <div style={cardStyle}>
+              <h2 style={{ fontSize: '0.9rem', color: '#fbbf24', fontWeight: '900', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>IDENTITY (अस्मिता)</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                 <div>
+                   <label style={{ fontSize: '0.75rem', color: 'rgba(254,243,199,0.5)', display: 'block', marginBottom: '0.4rem' }}>DYNASTY NAME</label>
+                   <input value={cName} onChange={e => setCName(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(251,191,36,0.3)', padding: '0.8rem', color: '#fff', borderRadius: '0.6rem', fontSize: '1rem' }} />
+                 </div>
+                 <div>
+                   <label style={{ fontSize: '0.75rem', color: 'rgba(254,243,199,0.5)', display: 'block', marginBottom: '0.4rem' }}>STARTING RULER</label>
+                   <input value={cRuler} onChange={e => setCRuler(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(251,191,36,0.3)', padding: '0.8rem', color: '#fff', borderRadius: '0.6rem', fontSize: '1rem' }} />
+                 </div>
+              </div>
+            </div>
+
+            {/* Varna Card */}
+            <div style={cardStyle}>
+              <h2 style={{ fontSize: '0.9rem', color: '#fbbf24', fontWeight: '900', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>VARNA PHILOSOPHY (वर्ण)</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                {VARNAS.map(v => (
+                  <div 
+                    key={v.id}
+                    onClick={() => setCVarna(v.id)}
+                    style={{ 
+                      padding: '1rem', 
+                      background: cVarna === v.id ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.02)', 
+                      border: `1px solid ${cVarna === v.id ? '#fbbf24' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: '0.8rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                      <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{v.icon} {v.name}</span>
+                      <span style={{ fontSize: '0.7rem', background: '#fbbf24', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 'bold' }}>BONUS</span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>{v.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Capital Selection */}
+            <div style={cardStyle}>
+              <h2 style={{ fontSize: '0.9rem', color: '#fbbf24', fontWeight: '900', letterSpacing: '0.1em', marginBottom: '1rem' }}>CAPITAL CITY (राजधानी)</h2>
+              <select value={cCapital} onChange={e => setCCapital(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid rgba(251,191,36,0.3)', padding: '0.8rem', borderRadius: '0.6rem', fontSize: '1rem' }}>
+                {REGIONS.map(r => (
+                   <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button onClick={() => setScreen('selection')} style={{ flex: 1, padding: '1rem', background: 'rgba(255,255,255,0.05)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.5)', borderRadius: '1rem', cursor: 'pointer', fontWeight: 'bold' }}>BACK</button>
+              <button 
+                onClick={() => startGame(-1, { name: cName, rulerName: cRuler, varna: cVarna, capitalId: cCapital })}
+                style={{ flex: 2, padding: '1rem', background: 'linear-gradient(to right, #d97706, #fbbf24)', color: '#451a03', border: 'none', borderRadius: '1rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem' }}
+              >
+                BEGIN REIGN →
+              </button>
+            </div>
           </div>
         </div>
       </div>
