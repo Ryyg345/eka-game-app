@@ -1134,9 +1134,9 @@ function MandalaOfKings() {
               borderRadius: '0.6rem', 
               fontSize: '0.75rem', 
               color: '#fef3c7', 
-              zIndex: 1000, 
-              boxShadow: '0 8px 30px rgba(0,0,0,0.6)', 
-              backdropFilter: 'blur(10px)', 
+              zIndex: 9999, 
+              boxShadow: '0 8px 30px rgba(0,0,0,0.8)', 
+              backdropFilter: 'blur(15px)', 
               pointerEvents: 'none',
               textAlign: 'left',
               lineHeight: '1.4'
@@ -1153,7 +1153,7 @@ function MandalaOfKings() {
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
           {/* Header Dashboard */}
-          <div style={{ ...cardStyle, background: 'rgba(88,28,135,0.2)', borderColor: 'rgba(217,119,6,0.5)', marginBottom: '1rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', position: 'relative', overflow: 'hidden', gap: '1rem' }}>
+          <div style={{ ...cardStyle, background: 'rgba(88,28,135,0.2)', borderColor: 'rgba(217,119,6,0.5)', marginBottom: '1rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', position: 'relative', gap: '1rem' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(to right, #d97706, #fbbf24, #d97706)' }} />
             <div>
               <h1 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 'bold', fontFamily: 'Georgia,serif', background: 'linear-gradient(to right, #fef3c7, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{player?.name} Dynasty</h1>
@@ -1212,7 +1212,7 @@ function MandalaOfKings() {
                   { label: 'Manpower', val: Math.floor(player?.manpower || 0), col: '#f87171', icon: '👥', sub: 'Pool' },
                   { label: 'Military', val: player?.militaryStrength || 0, col: '#fb923c', icon: '⚔️', sub: 'Strength' },
                 ].map(r => (
-                  <div key={r.label} style={{ ...cardStyle, background: 'rgba(255,255,255,0.03)', textAlign: 'left', padding: isMobile ? '0.75rem' : '1rem', border: `1px solid ${r.col}22`, overflow: 'hidden', position: 'relative' }}>
+                  <div key={r.label} style={{ ...cardStyle, background: 'rgba(255,255,255,0.03)', textAlign: 'left', padding: isMobile ? '0.75rem' : '1rem', border: `1px solid ${r.col}22`, position: 'relative' }}>
                     <div style={{ position: 'absolute', top: '-10px', right: '-5px', fontSize: '2.5rem', opacity: 0.05, transform: 'rotate(15deg)' }}>{r.icon}</div>
                     <div style={{ fontSize: '0.65rem', color: r.col, fontWeight: 'bold', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>{r.label.toUpperCase()}</div>
                     <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 'bold', color: '#fff' }}>{r.val.toLocaleString()}</div>
