@@ -1113,7 +1113,7 @@ function MandalaOfKings() {
     const InfoIcon = ({ content, side = 'left' }) => {
       const [showInfo, setShowInfo] = useState(false);
       return (
-        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '0.4rem', pointerEvents: 'auto' }}>
+        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '0.4rem', pointerEvents: 'auto', zIndex: showInfo ? 10000 : 1 }}>
           <div 
             onMouseEnter={() => setShowInfo(true)}
             onMouseLeave={() => setShowInfo(false)}
