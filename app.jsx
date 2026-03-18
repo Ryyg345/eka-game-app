@@ -209,21 +209,28 @@ const DYNASTY_REGIONS = {
   'Kashmir': 'shrinagara', 'Chandela': 'khajuraho', 'Paramara': 'dhara'
 };
 
-const makeChar = (dynasty, isSelf) => ({
-  name: rndName(dynasty),
-  traits: isSelf ? [pick(TRAITS), pick(TRAITS)] : [pick(TRAITS)],
-  xp: 0,
-  level: 1,
-  perks: [],
-  tenure: 0,
-  maxTenure: rnd(15, 30) // Years until succession
-});
+const makeChar = (dynasty, isSelf, rIdx = 0) => {
+  const dData = DYNASTY_DATA[dynasty] || { male: ['Ruler'], female: [] };
+  const names = [...dData.male, ...dData.female];
+  const name = names[rIdx % names.length];
+  return {
+    name,
+    traits: isSelf ? [pick(TRAITS), pick(TRAITS)] : [pick(TRAITS)],
+    xp: 0,
+    level: 1,
+    perks: [],
+    tenure: 0,
+    maxTenure: rnd(15, 30),
+    rIdx
+  };
+};
 
 const makeFaction = (index, isPlayer = false) => {
   const dName = DYNASTY_NAMES[index];
   return {
     id: index, name: dName,
-    ruler: makeChar(dName, isPlayer),
+    rulerIndex: 0,
+    ruler: makeChar(dName, isPlayer, 0),
     gold: rnd(100, 300), food: rnd(150, 400),
     regionIds: [], manpower: 1000, stability: rnd(40, 80),
     militaryStrength: 2000, relations: {}, atWar: [], isPlayer
@@ -535,12 +542,14 @@ function MandalaOfKings() {
     if (p.ruler.tenure >= p.ruler.maxTenure) {
       const old = { ...p.ruler };
       const dynasty = p.name;
-      const newRuler = makeChar(dynasty, true);
-      newRuler.level = Math.max(1, Math.floor(old.level / 2)); // Inherit half power
+      const nextRIdx = (p.rulerIndex || 0) + 1;
+      const newRuler = makeChar(dynasty, true, nextRIdx);
+      newRuler.level = Math.max(1, Math.floor(old.level / 2));
       p.ruler = newRuler;
-      p.stability = Math.max(20, p.stability - 25); // Destabilizing
+      p.rulerIndex = nextRIdx;
+      p.stability = Math.max(20, p.stability - 25);
       setSuccessionData({ old, new: newRuler, score: calcLegacy(p, culture, prestige, old.tenure) });
-      localAddLog(`👑 Throne Transition: ${old.name} has passed. Long live ${newRuler.name}!`);
+      localAddLog(`👑 Chronological Shift: ${old.name} has passed. Long live ${newRuler.name}!`);
     }
 
     let goldIncome = p.regionIds.length * 20 + rnd(-10, 20);
@@ -1101,6 +1110,44 @@ function MandalaOfKings() {
       myRegions.some(mr => mr.neighbors.includes(er.id))
     );
 
+    const InfoIcon = ({ content, side = 'left' }) => {
+      const [showInfo, setShowInfo] = useState(false);
+      return (
+        <div style={{ position: 'relative', display: 'inline-block', marginLeft: '0.4rem', pointerEvents: 'auto' }}>
+          <div 
+            onMouseEnter={() => setShowInfo(true)}
+            onMouseLeave={() => setShowInfo(false)}
+            onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}
+            style={{ width: '1rem', height: '1rem', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: '#fbbf24', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            i
+          </div>
+          {showInfo && (
+            <div style={{ 
+              position: 'absolute', 
+              top: '1.4rem', 
+              [side === 'left' ? 'left' : 'right']: 0, 
+              width: isMobile ? '12rem' : '16rem', 
+              background: 'rgba(30,27,75,0.98)', 
+              border: '1px solid #fbbf24', 
+              padding: '0.8rem', 
+              borderRadius: '0.6rem', 
+              fontSize: '0.75rem', 
+              color: '#fef3c7', 
+              zIndex: 1000, 
+              boxShadow: '0 8px 30px rgba(0,0,0,0.6)', 
+              backdropFilter: 'blur(10px)', 
+              pointerEvents: 'none',
+              textAlign: 'left',
+              lineHeight: '1.4'
+            }}>
+               {content}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div style={{ minHeight: '100vh', background: bg, padding: isMobile ? '0.75rem' : '1.5rem', color: '#fef3c7', fontFamily: 'sans-serif', position: 'relative' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -1136,7 +1183,9 @@ function MandalaOfKings() {
             <div style={{ textAlign: isMobile ? 'left' : 'right', display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'stretch' : 'flex-end', gap: '0.5rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
-                  <div style={{ fontSize: '0.6rem', color: '#fbbf24', letterSpacing: '0.1em', fontWeight: 'bold' }}>LEGACY SCORE</div>
+                  <div style={{ fontSize: '0.6rem', color: '#fbbf24', letterSpacing: '0.1em', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: '0.3rem' }}>
+                    LEGACY SCORE <InfoIcon content="Your final score is calculated based on realms controlled, resources, culture, and prestige." side="right" />
+                  </div>
                   <div style={{ fontSize: isMobile ? '1.5rem' : '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>{score}</div>
                 </div>
                 <button onClick={() => setShowExitConfirm(true)} style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '0.5rem', color: '#fca5a5', fontSize: '0.7rem', padding: '0.4rem 0.75rem', cursor: 'pointer', transition: 'all 0.2s' }}>EXIT</button>
@@ -1147,6 +1196,13 @@ function MandalaOfKings() {
           <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 340px', gap: '1.25rem' }}>
             {/* Left Column: Management & Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+               {/* Resources Strip Header */}
+              <div style={{ marginBottom: '0.5rem' }}>
+                <h2 style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: 0.8 }}>
+                  🏦 STATE TREASURY <InfoIcon content="Your primary state assets. Gold fuels war, Food sustains manpower, and Military Strength represents your standing army." />
+                </h2>
+              </div>
               
               {/* Resources Strip */}
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '0.75rem' }}>
@@ -1170,7 +1226,7 @@ function MandalaOfKings() {
                 {/* Royal Actions Card */}
                 <div style={cardStyle}>
                   <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '1.2rem' }}>📜</span> Royal Actions
+                    <span style={{ fontSize: '1.2rem' }}>📜</span> Royal Actions <InfoIcon content="Issue royal decrees to develop your land, raise armies, or conduct diplomacy with foreign powers." />
                   </h2>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '1.25rem' }}>
                     {['develop', 'recruit', 'diplomacy', 'war', 'peace'].map(a => (
@@ -1235,7 +1291,7 @@ function MandalaOfKings() {
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span style={{ fontSize: '1.2rem' }}>🕌</span> Your Mandala
+                      <span style={{ fontSize: '1.2rem' }}>🕌</span> Your Mandala <InfoIcon content="The internal stability of your kingdom affects resource generation. Low stability can lead to revolts." />
                     </h2>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '0.65rem', color: '#a78bfa', fontWeight: 'bold' }}>STABILITY</div>
@@ -1262,7 +1318,7 @@ function MandalaOfKings() {
                 {/* Chronicles */}
                 <div style={{ ...cardStyle, background: 'rgba(0,0,0,0.2)' }}>
                   <h2 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fbbf24', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>📜</span> The Chronicles
+                    <span>📜</span> The Chronicles <InfoIcon content="A historical log of all key events and diplomatic shifts in your reign." />
                   </h2>
                   <div style={{ maxHeight: '12rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
                     {log.map((l, i) => (
@@ -1284,7 +1340,7 @@ function MandalaOfKings() {
                 {/* Conflict Zones */}
                 <div style={{ ...cardStyle, background: 'rgba(127,29,29,0.05)', borderColor: 'rgba(248,113,113,0.3)' }}>
                   <h2 style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fca5a5', borderBottom: '1px solid rgba(248,113,113,0.2)', paddingBottom: '0.75rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>⚔️</span> Conflict Borders
+                    <span>⚔️</span> Conflict Borders <InfoIcon content="Regions belonging to rival dynasties that directly border your own lands." />
                   </h2>
                   <div style={{ maxHeight: '12rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
                     {frontiers.length > 0 ? (
@@ -1319,7 +1375,9 @@ function MandalaOfKings() {
               
               {/* Victory Progress */}
               <div style={cardStyle}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem' }}>🏆 Victory Progress</h2>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  🏆 Victory Progress <InfoIcon content="Total victory can be achieved through Cultural enlightenment, Political Prestige, or Military Hegemony (conquest)." side="right" />
+                </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {[
                     { label: 'Culture 📜', val: culture, max: 2000, col: '#818cf8', sub: 'Enlightenment Path' },
@@ -1346,7 +1404,9 @@ function MandalaOfKings() {
 
               {/* Rivals List */}
               <div style={cardStyle}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem' }}>👑 Rival Mandalas</h2>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fbbf24', fontFamily: 'Georgia,serif', marginBottom: '1.25rem', borderBottom: '1px solid rgba(217,119,6,0.2)', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  👑 Rival Mandalas <InfoIcon content="Other powerful dynasties in Bharat. Keep an eye on their military strength and your relations with them." side="right" />
+                </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '30rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
                   {others.map(f => (
                     <div key={f.id} style={{ 
