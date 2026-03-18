@@ -886,7 +886,7 @@ function MandalaOfKings() {
                 Forge a legacy that echoes through the centuries. Lead your dynasty of Bhāratavarṣa to supremacy before the year <strong>1000 CE</strong>.
               </p>
               <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(217,119,6,0.1)', borderRadius: '0.5rem', borderLeft: '4px solid #d97706', fontSize: '0.85rem' }}>
-                <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Legacy Score:</span> 🏰 Realms × 100 + 💰 Gold × 0.5 + 📜 Culture × 10 + ⭐ Prestige × 5
+                <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>Legacy Score:</span> 🏰 Realms × 100 + 💰 Gold × 0.5 + 📜 Culture × 10 + ⭐ Prestige × 5 + ⏳ Years × 2
               </div>
             </S>
 
