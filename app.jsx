@@ -283,6 +283,7 @@ function MandalaOfKings() {
   const [turnSummary, setTurnSummary] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [confirmingTurn, setConfirmingTurn] = useState(false);
 
   const notify = (msg, type = 'info') => {
     const id = Date.now();
@@ -1307,31 +1308,74 @@ function MandalaOfKings() {
             </div>
           </div>
 
-          {/* Turn Action Bar */}
-          <div style={{ position: 'sticky', bottom: '1.5rem', marginTop: '2rem', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
-            <div style={{ background: 'rgba(30,27,75,0.8)', backdropFilter: 'blur(15px)', padding: '0.6rem 2rem', borderRadius: '999px', border: '1px solid rgba(217,119,6,0.4)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)', display: 'flex', gap: '2rem', alignItems: 'center' }}>
-              <button 
-                onClick={nextTurn} 
-                disabled={!!event} 
-                style={{
-                  padding: '0.75rem 2.5rem', 
-                  fontSize: '1rem', 
-                  fontWeight: '900', 
-                  borderRadius: '999px', 
-                  border: 'none', 
-                  cursor: event ? 'not-allowed' : 'pointer',
-                  background: event ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #d97706, #fbbf24)', 
-                  color: event ? 'rgba(255,255,255,0.3)' : '#451a03',
-                  boxShadow: event ? 'none' : '0 4px 15px rgba(217,119,6,0.4)',
-                  transition: 'all 0.2s',
-                  letterSpacing: '0.05em'
-                }}
-                onMouseEnter={(e) => { if(!event) e.currentTarget.style.transform = 'scale(1.05)'; }}
-                onMouseLeave={(e) => { if(!event) e.currentTarget.style.transform = 'scale(1)'; }}
-              >
-                {event ? 'RESOLVE FATE' : 'SEAL THE TURN →'}
-              </button>
-            </div>
+          {/* Circular Next Turn Button (Fixed Right) */}
+          <div style={{ 
+            position: 'fixed', 
+            bottom: isMobile ? '1.5rem' : '2.5rem', 
+            right: isMobile ? '1.5rem' : '2.5rem', 
+            zIndex: 90,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            pointerEvents: 'none'
+          }}>
+            <button 
+              onClick={() => {
+                if (event) return;
+                if (confirmingTurn) {
+                  nextTurn();
+                  setConfirmingTurn(false);
+                } else {
+                  setConfirmingTurn(true);
+                }
+              }}
+              disabled={!!event}
+              style={{
+                pointerEvents: 'auto',
+                width: confirmingTurn ? (isMobile ? '180px' : '220px') : (isMobile ? '60px' : '80px'),
+                height: isMobile ? '60px' : '80px',
+                borderRadius: confirmingTurn ? '40px' : '50%',
+                background: event ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #d97706, #fbbf24)',
+                color: event ? 'rgba(255,255,255,0.3)' : '#451a03',
+                border: 'none',
+                cursor: event ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: event ? 'none' : '0 10px 40px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.2)',
+                transition: 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                overflow: 'hidden',
+                padding: confirmingTurn ? '0 1.5rem' : '0',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => { if(!event && !confirmingTurn) e.currentTarget.style.transform = 'scale(1.1)'; }}
+              onMouseLeave={(e) => { 
+                if(!event && !confirmingTurn) e.currentTarget.style.transform = 'scale(1)';
+                if(confirmingTurn) setConfirmingTurn(false);
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                opacity: 1,
+                transition: 'opacity 0.3s'
+              }}>
+                <span style={{ fontSize: isMobile ? '1.5rem' : '1.8rem', flexShrink: 0 }}>
+                  {event ? '📜' : (confirmingTurn ? '✔️' : '⏳')}
+                </span>
+                {confirmingTurn && (
+                  <span style={{ 
+                    fontWeight: '900', 
+                    fontSize: isMobile ? '0.75rem' : '0.9rem', 
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '0.05em'
+                  }}>
+                    {event ? 'RESOLVE FATE' : 'CONFIRM TURN'}
+                  </span>
+                )}
+              </div>
+            </button>
           </div>
 
           {/* Event Overlay */}
