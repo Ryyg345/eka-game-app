@@ -322,6 +322,21 @@ function MandalaOfKings() {
       });
     }
 
+    // Step 2: Global Territory Distribution (Fill the whole map)
+    REGIONS.forEach(reg => {
+      if (!newFactions.some(f => f.regionIds.includes(reg.id))) {
+        const neighbors = newFactions.filter(f => f.regionIds.some(rid => REGIONS.find(r => r.id === rid)?.neighbors.includes(reg.id)));
+        const target = neighbors.length ? pick(neighbors) : pick(newFactions);
+        target.regionIds.push(reg.id);
+      }
+    });
+
+    // Step 3: Scale stats
+    newFactions.forEach(f => {
+      const c = f.regionIds.length;
+      f.gold = c * 25; f.food = c * 30; f.manpower = c * 500; f.militaryStrength = c * 1000;
+    });
+
     setFactions(newFactions); setPlayer(playerFaction);
     setScreen('playing'); setMonth(1); setYear(600);
     setCulture(difficulty === 'easy' ? 20 : 10);
