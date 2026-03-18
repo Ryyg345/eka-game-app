@@ -298,6 +298,7 @@ function MandalaOfKings() {
   const [log, setLog] = useState([]);
   const [action, setAction] = useState(null);
   const [targetId, setTargetId] = useState(null);
+  const [activeHelp, setActiveHelp] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
   const [savedState, setSavedState] = useState(null);
   const [victoryType, setVictoryType] = useState(null);
@@ -1111,47 +1112,25 @@ function MandalaOfKings() {
     );
 
     const InfoIcon = ({ content, side = 'left' }) => {
-      const [showInfo, setShowInfo] = useState(false);
-      const [pos, setPos] = useState({ top: 0, left: 0 });
-      
       const handleShow = (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        setPos({ top: rect.top, left: rect.left });
-        setShowInfo(true);
+        setActiveHelp({ content, top: rect.top, left: rect.left, side });
       };
 
       return (
         <div style={{ position: 'relative', display: 'inline-block', marginLeft: '0.4rem', pointerEvents: 'auto' }}>
           <div 
             onMouseEnter={handleShow}
-            onMouseLeave={() => setShowInfo(false)}
+            onMouseLeave={() => setActiveHelp(null)}
             onClick={(e) => { e.stopPropagation(); handleShow(e); }}
-            style={{ width: '1rem', height: '1rem', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: '#fbbf24', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ 
+              width: '1rem', height: '1rem', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.5)', 
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              fontSize: '0.65rem', color: '#fbbf24', cursor: 'pointer', fontWeight: 'bold' 
+            }}
           >
             i
           </div>
-          {showInfo && (
-            <div style={{ 
-              position: 'fixed', 
-              top: pos.top + 25, 
-              left: Math.min(window.innerWidth - (isMobile ? 220 : 280), Math.max(10, side === 'left' ? pos.left : pos.left - (isMobile ? 180 : 240))), 
-              width: isMobile ? '12rem' : '16rem', 
-              background: 'rgba(30,27,75,0.98)', 
-              border: '1px solid #fbbf24', 
-              padding: '0.8rem', 
-              borderRadius: '0.6rem', 
-              fontSize: '0.75rem', 
-              color: '#fef3c7', 
-              zIndex: 99999, 
-              boxShadow: '0 8px 30px rgba(0,0,0,0.8)', 
-              backdropFilter: 'blur(15px)', 
-              pointerEvents: 'none',
-              textAlign: 'left',
-              lineHeight: '1.4'
-            }}>
-               {content}
-            </div>
-          )}
         </div>
       );
     };
@@ -1641,6 +1620,30 @@ function MandalaOfKings() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+          
+          {/* Global Info Tooltip Overlay */}
+          {activeHelp && (
+            <div style={{ 
+              position: 'fixed', 
+              top: activeHelp.top + 25, 
+              left: Math.min(window.innerWidth - (isMobile ? 220 : 280), Math.max(10, activeHelp.side === 'left' ? activeHelp.left : activeHelp.left - (isMobile ? 180 : 240))), 
+              width: isMobile ? '12.5rem' : '16rem', 
+              background: 'rgba(30,27,75,0.98)', 
+              border: '1px solid #fbbf24', 
+              padding: '1rem', 
+              borderRadius: '0.8rem', 
+              fontSize: '0.8rem', 
+              color: '#fef3c7', 
+              zIndex: 1000000, 
+              boxShadow: '0 12px 40px rgba(0,0,0,0.8)', 
+              backdropFilter: 'blur(16px)', 
+              pointerEvents: 'none',
+              textAlign: 'left',
+              lineHeight: '1.5'
+            }}>
+               {activeHelp.content}
             </div>
           )}
         </div>
